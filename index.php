@@ -5,6 +5,8 @@
       return substr($hay, 0, strlen($needle)) === $needle;
     }
     
+    include 'config.inc.php';
+    
 	//var_dump($_POST);echo "<BR />";
 	
 	if(isset($_POST['nom']) && isset($_POST['prenom']) && isset($_POST['mail']) && isset($_POST['gsm']) 
@@ -90,7 +92,7 @@
 		//TODO ajouter et verifier le capcha
 
         //check the DB and insert
-        $dbh = new PDO('mysql:host=localhost;dbname=marsinne', "root", "root");
+        $dbh = new PDO('mysql:host='.$DATABASE_SERVER.';dbname='.$DATABASE_NAME.'', $DATABASE_USERNAME, $DATABASE_PASSWORD);
         if(!isset($error_array['username']))
         {
             //verifier l'existance du username
