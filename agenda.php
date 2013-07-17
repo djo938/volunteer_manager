@@ -2,15 +2,13 @@
 
 //TODO 
     //-gerer les erreurs DB (avec des exceptions)
-    //-faire passer les mdp en MD5
-    //-bouton disconnect
     //-les bonus tienne bien compte des conflits de plage?
-    //-lorsqu'on depasse le nombre de slot possible, ne pas afficher les conflits
-    //-faire la transaction
 
 session_start();
 include 'config.inc.php';
 $dbh        = new PDO('mysql:host='.$DATABASE_SERVER.';dbname='.$DATABASE_NAME.'', $DATABASE_USERNAME, $DATABASE_PASSWORD);
+$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$dbh->query("SET GLOBAL TRANSACTION ISOLATION LEVEL SERIALIZABLE");
 $error_list = array(); //liste des erreurs rencontrees
 
 function fromMySQLDatetimeToPHPDatetime($mysql_datetime)
@@ -220,6 +218,7 @@ function recordData($timeslot_id_array)
     if($AGENDA_MAX_SLOT < count($timeslot_id_array))
     {
         $error_list[] = "Le nombre de slot maximum possible est de ".$AGENDA_MAX_SLOT;
+        return false; //evite d'afficher trop d'information d'overlap
     }
     
     //verifier que les slots ne s'overlape pas
@@ -273,19 +272,81 @@ function recordData($timeslot_id_array)
     {
         if(array_key_exists("Envoyer",$_POST))
         {
-            //TODO on ajoute dans la DB
+            //on ajoute dans la DB
+            if($dbh->beginTransaction())
+            {
                 //transaction
-                    //1) on verrouille
+                    //1) on verrouille, pas besoin transaction en serialisable
                     
                     //2) on verifie la disponibilite des plages
+                    $sql_req = "SELECT Timeslot.Description, Timeslot.NumberOfPeople, Timeslot.NumberOfPeople - count(User_Timeslot.ID_Timeslot) AS remaining
+                                           FROM Timeslot LEFT JOIN User_Timeslot ON Timeslot.ID_Timeslot = User_Timeslot.ID_Timeslot
+                                           WHERE Timeslot.ID_Timeslot in (".$sql_param.")
+                                           GROUP BY Timeslot.ID_Timeslot";
+                    //echo $sql_req."<BR />";
+                    $stmt = $dbh->prepare($sql_req);
                     
-                    //3) on reserve les plages
+                    for($i = 0;$i<count($timeslot_id_array);$i++)
+                    {
+                        $stmt->bindParam(":param".($i+1), $timeslot_id_array[$i]);
+                    }
                     
-                    //4) on commit
-            
-            //TODO si pas d'erreur, ne pas afficher le planning
-                //TODO en faisant passer la variable $submitted_calendar a true
-                //return true;
+                    $stmt->execute();
+                    $remain_slot = $stmt->fetchAll();
+                    
+                    $all_available = true;
+                    foreach($remain_slot as $index=>$value)
+                    {
+                        if($value["remaining"] == 0)
+                        {
+                            $all_available = false;
+                            break;
+                        }
+                    }
+                    
+                    if($all_available)
+                    {
+                        $first = true;
+                        $param_value = "";
+                        for($i = 0;$i<count($timeslot_id_array);$i++)
+                        {
+                            if($first)
+                            {
+                                $param_value = ":param".($i+1).", :user".($i+1);
+                                $first = false;
+                            }
+                            else
+                            {
+                                $param_value = ", :param".($i+1).", :user".($i+1);
+                            }
+                        }
+                        
+                        //3) on reserve les plages
+                        $stmt = $dbh->prepare("INSERT INTO User_Timeslot VALUES (".$param_value.")");
+                        
+                        for($i = 0;$i<count($timeslot_id_array);$i++)
+                        {
+                            $stmt->bindParam(":param".($i+1), $timeslot_id_array[$i]);
+                            $stmt->bindParam( ":user".($i+1), $_SESSION['user_id']);
+                        }
+                        
+                        $stmt->execute();
+                        
+                        //4) on commit
+                        $dbh->commit();
+                        
+                        return true;
+                    }
+                    else
+                    {
+                        $error_list[] = "Certaines plages horaires ne sont plus disponible, adaptez votre horaire";
+                        $dbh->rollBack();
+                    }
+            }
+            else
+            {
+                $error_list[] = "Erreur le systeme ne gère pas les transactions";
+            }
         }
     }
     
@@ -453,11 +514,12 @@ function tryToAuth()
     unset($_SESSION['user_id']);
     
     //on tente une auth
-    $stmt = $dbh->prepare("SELECT * from Users where username = :uname and user_type = 'validated'");        
+    $stmt = $dbh->prepare("SELECT * from Users where username = :uname and user_type = 'validated' and password = :password");        
     $stmt->bindParam(':uname', $_POST['username']);
+    $stmt->bindParam(':password', md5($_POST['password']));
 	$stmt->execute();
     
-	if( ($var = $stmt->fetch()) &&  $_POST['password'] == $var["password"])
+	if( ($var = $stmt->fetch()))
 	{
 	    $_SESSION['user_id'] = $var["ID_Users"];
 	}
@@ -477,32 +539,8 @@ function printAuthForm()
     <?php
 }
 
-//////////////// AUTH ///////////////////////////////////////////////////
-$try_to_auth = false;
-
-//TODO uncomment me
-/*if(isset($_POST['username']) && isset($_POST['password']))
+function getTimeslotID()
 {
-    tryToAuth();
-}*/
-
-$_SESSION['user_id']          = '2'; //TODO erase me
-
-if (!isset($_SESSION['user_id']))//est-on authentifie?
-{
-    //on affiche le formulaire d'auth
-    printAuthForm();
-    
-    if($try_to_auth)
-    {
-        echo '<H3>Echec de connexion</H3>';
-    }
-}
-else
-{
-//////////////// GET DATA ///////////////////////////////////////////////////
-    //recuperer la liste des cases cochees
-        //id des slots selectionnes par l'utilisateur
     if(array_key_exists("timeslot_id", $_POST))
     {
         $timeslot_id_array = $_POST["timeslot_id"];
@@ -510,7 +548,7 @@ else
         //on s'assure que l'on a bien recuperer un tableau
         if(! is_array($timeslot_id_array))
         {
-            $timeslot_id_array = array();
+            return array(); 
         }
         
         //on s'assure que l'ensemble de valeur du tableau sont de type numerique
@@ -518,32 +556,75 @@ else
         {
             if(!is_numeric($v))
             {
-                $timeslot_id_array = array();
-                break;
+                return array(); 
             }
         }
+        
+        return $timeslot_id_array;
     }
-    else
-    {
-        $timeslot_id_array = array(); 
-    }
+
+    return array(); 
+}
+
+if(array_key_exists("Deconnection",$_POST))
+{
+    unset($_SESSION['user_id']);
+}
+
+//////////////// AUTH ///////////////////////////////////////////////////
+$try_to_auth = false;
+
+//TODO uncomment me
+/*if(isset($_POST['username']) && isset($_POST['password']))
+{
+    tryToAuth();
+    $try_to_auth = true;
+}*/
+
+$_SESSION['user_id']          = '3'; //TODO erase me
+
+if (!isset($_SESSION['user_id']))//est-on authentifie?
+//////////////// NOT AUTHENTICATED PART //////////////////////////////////////////////////////////////////////////////////////////////////////////
+{
+    //on affiche le formulaire d'auth
+    printAuthForm();
     
+    if($try_to_auth)
+    {
+        echo '<H3>Echec de connexion, le nom d\'utilisateur ou le mot de passe sont peu être incorrects.  
+        Le compte n\'a peu être pas encore été validé par un administrateur.  Si le problème persiste, contactez un administrateur: webmaster@folkfestivalmarsinne.be</H3>';
+    }
+}
+//////////////// AUTHENTICATED PART /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+else
+{
+    echo "<form METHOD=\"POST\" ACTION=\"agenda.php\"><INPUT type=\"submit\" name=\"Deconnection\" value=\"Deconnection\"></form>";
+    
+    //////////////// GET DATA ///////////////////////////////////////////////////
+
+    //RECUPERATION DE LA LISTE DES CASES COCHEE, id des slots selectionnes par l'utilisateur (s'il y en a)
+    $timeslot_id_array = getTimeslotID();
+    
+    //RECUPERATION DES SLOTS DE L'UTILISATEUR DANS LA DB (s'il y en a)////////////
     $submitted_calendar = false;
     $user_slot = getUserSlot();//on recupere les slots que l'utilisateur a reserve 
     if(count($user_slot) > 0) //est ce que l'utilisateur a deja reserve ?
     {
         $submitted_calendar = true;
     }
-
-//////////////// RECORD/TEST ///////////////////////////////////////////////////
-
-    //si l'utilisateur n'a pas encore fait de reservation et qu'il y a des donnees de post, on peut tenter un test ou un submit
-    if(!$submitted_calendar && (array_key_exists("Test",$_POST) || array_key_exists("Envoyer",$_POST) )) // SI donnees de post
-    {
-        $submitted_calendar = recordData($timeslot_id_array); //on essaye d'enregistrer ou de tester les donnees
-    }
     
-//////////////// PRINT /////////////////////////////////////////////////////////
+    //////////////// RECORD/TEST ///////////////////////////////////////////////////
+
+    else
+    {
+        //si l'utilisateur n'a pas encore fait de reservation et qu'il y a des donnees de post, on peut tenter un test ou un submit
+        if((array_key_exists("Test",$_POST) || array_key_exists("Envoyer",$_POST) )) // SI donnees de post
+        {
+            $submitted_calendar = recordData($timeslot_id_array); //on essaye d'enregistrer ou de tester les donnees
+        }
+    }
+
+    //////////////// PRINT /////////////////////////////////////////////////////////
 
     if($submitted_calendar) //l'utilisateur a deja enregistre son agenda
     {        

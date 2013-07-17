@@ -120,7 +120,7 @@
             $stmt->bindParam(':gsm', $_POST['gsm']);
             $stmt->bindParam(':backup', $secour);
             $stmt->bindParam(':uname', $_POST['username']);
-            $stmt->bindParam(':pwd', $_POST['password1']); //TODO hassh the password
+            $stmt->bindParam(':pwd', md5($_POST['password1'])); //TODO hassh the password
             if(!$stmt->execute())
             {
                 echo "<H1>Echec de l'ajout de l'utilisateur.  Si l'erreur persiste, merci de bien vouloir contacter l'administrateur &agrave; l'adresse suivante : webmaster@folkfestivalmarsinne.be</H1>";
