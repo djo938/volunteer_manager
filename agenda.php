@@ -2,7 +2,8 @@
 
 //TODO 
     //-gerer les erreurs DB (avec des exceptions)
-    //-les bonus tienne bien compte des conflits de plage?
+    //-utiliser getSlotDescriptionFromDBSlot au endroit opportun
+    //-ameliorer la gestion de la connexio, j'aime pas sa tronche
 
 session_start();
 include 'config.inc.php';
@@ -103,13 +104,13 @@ function sortData($db_data, $timeslot_id_array)
     foreach( $db_data as $key=>$value)
     {
         //on est toujours le jours courant ?
-    	if($value["Start_time"] > $next_limit)
-    	{
-    	    //echo count($current_day)."<BR />";
-    	    //var_dump($current_day);echo "<BR /><BR />";
+        if($value["Start_time"] > $next_limit)
+        {
+            //echo count($current_day)."<BR />";
+            //var_dump($current_day);echo "<BR /><BR />";
             //nouvelle ensemble des events du jour
-    		unset($current_day);
-    		$current_day = array();
+            unset($current_day);
+            $current_day = array();
 
             //creation de la nouvelle limite
             $new_next_limit = fromMySQLDatetimeToPHPDatetime($value["Start_time"]);
@@ -121,30 +122,30 @@ function sortData($db_data, $timeslot_id_array)
             
             $new_next_limit->setTime(3,0,0); //on definit la limite de la journee a 3h00 du matin
 
-    		$start_day = clone $new_next_limit;
+            $start_day = clone $new_next_limit;
             $start_day->sub(new DateInterval("P1D"));
 
             //ajout de l'ensemble du jour dans la liste des jours
-    		$sorted_data[$start_day->format("l d F")] = &$current_day;
+            $sorted_data[$start_day->format("l d F")] = &$current_day;
 
-    		//application de la nouvelle limite
-    		$next_limit = $new_next_limit->format("Y-m-d H:i:s");
-    	}
+            //application de la nouvelle limite
+            $next_limit = $new_next_limit->format("Y-m-d H:i:s");
+        }
 
         //l'event existe deja aujourd'hui ?
-    	if( !array_key_exists($value["Description"],$current_day))
-    	{
-    		$current_day[$value["Description"]] = array();
-    	}
+        if( !array_key_exists($value["Description"],$current_day))
+        {
+            $current_day[$value["Description"]] = array();
+        }
 
         //ajout de l'event
-    	$current_day[$value["Description"]][] = $value;
-    	
-    	//l'objet fait-il partie de ceux selectionne? (pour le calcul des bonus)
-    	if(in_array($value["ID_Timeslot"],$timeslot_id_array))
-    	{
-    	    $selected_db_items[] = $value;
-    	}
+        $current_day[$value["Description"]][] = $value;
+        
+        //l'objet fait-il partie de ceux selectionne? (pour le calcul des bonus)
+        if(in_array($value["ID_Timeslot"],$timeslot_id_array))
+        {
+            $selected_db_items[] = $value;
+        }
     }
     //echo count($current_day)."<BR />";
     
@@ -162,40 +163,40 @@ function printForm($sorted_data, $timeslot_id_array)
             continue;
         }
 
-    	echo "<h1>".$key."</h1><table>";
+        echo "<h1>".$key."</h1><table>";
 
-    	foreach( $current_day as $desc=>$occurrences)
-    	{
-    	    if(count($occurrences) == 0)
+        foreach( $current_day as $desc=>$occurrences)
+        {
+            if(count($occurrences) == 0)
             {
                 continue;
             }
 
-    		echo "<tr><td>".$desc."</td><td><table>\n";
+            echo "<tr><td>".$desc."</td><td><table>\n";
 
-    		$first_line  = "<tr>";
-    		$second_line = "<tr>";
-    		foreach( $occurrences as $index=>$occurrence)
-    		{
-    		    //cocher les cases en provenances des erreurs ou du test
-    		    if(in_array($occurrence["ID_Timeslot"], $timeslot_id_array))
-    		    {
-    		        $checked = "checked";
-    		    }
-    		    else
-    		    {
-    		        $checked = "";
-    		    }
+            $first_line  = "<tr>";
+            $second_line = "<tr>";
+            foreach( $occurrences as $index=>$occurrence)
+            {
+                //cocher les cases en provenances des erreurs ou du test
+                if(in_array($occurrence["ID_Timeslot"], $timeslot_id_array))
+                {
+                    $checked = "checked";
+                }
+                else
+                {
+                    $checked = "";
+                }
 
-    			$first_line  .= "<td><INPUT type=\"checkbox\" name=\"timeslot_id[]\" value=\"".$occurrence["ID_Timeslot"]."\" ".$checked." />".fromMySQLDatetimeToPHPDatetime($occurrence["Start_time"])->format("H:i")."-".fromMySQLDatetimeToPHPDatetime($occurrence["End_time"])->format("H:i")."</td>\n";
-    		    $second_line .= "<td>".$occurrence["NumberOfPeople"]." place(s)</td>\n";
-    		}
-    		$first_line  .= "</tr>";
-    		$second_line .= "</tr>";
+                $first_line  .= "<td><INPUT type=\"checkbox\" name=\"timeslot_id[]\" value=\"".$occurrence["ID_Timeslot"]."\" ".$checked." />".fromMySQLDatetimeToPHPDatetime($occurrence["Start_time"])->format("H:i")."-".fromMySQLDatetimeToPHPDatetime($occurrence["End_time"])->format("H:i")."</td>\n";
+                $second_line .= "<td>".$occurrence["NumberOfPeople"]." place(s)</td>\n";
+            }
+            $first_line  .= "</tr>";
+            $second_line .= "</tr>";
 
-    		echo $first_line.$second_line."</table></td></tr>";
-    	}
-    	echo "</table>";
+            echo $first_line.$second_line."</table></td></tr>";
+        }
+        echo "</table>";
     }
     ?>
     <BR/><INPUT type="submit" name="Test" value="Test">
@@ -205,27 +206,11 @@ function printForm($sorted_data, $timeslot_id_array)
     <?php
 }
 
-function recordData($timeslot_id_array)
+function buildSQLParam($array_size)
 {
-    global $dbh,$error_list, $AGENDA_MIN_SLOT, $AGENDA_MAX_SLOT;      
-    
-    //verifier le nombre de slot
-    if($AGENDA_MIN_SLOT > count($timeslot_id_array))
-    {
-        $error_list[] = "Le nombre de slot minimum possible est de ".$AGENDA_MIN_SLOT;
-    }
-    
-    if($AGENDA_MAX_SLOT < count($timeslot_id_array))
-    {
-        $error_list[] = "Le nombre de slot maximum possible est de ".$AGENDA_MAX_SLOT;
-        return false; //evite d'afficher trop d'information d'overlap
-    }
-    
-    //verifier que les slots ne s'overlape pas
-    //on recupere les valeurs des slots selectionnes
     $first = true;
     $sql_param = "";
-    for($i = 0;$i<count($timeslot_id_array);$i++)
+    for($i = 0;$i<count($array_size);$i++)
     {
         if($first)
         {
@@ -235,7 +220,17 @@ function recordData($timeslot_id_array)
         }
         $sql_param .= ",:param".($i+1);
     }
+    return $sql_param;
+}
 
+function isOverLap($timeslot_id_array)
+{
+    global $dbh,$error_list;
+    //verifier que les slots ne s'overlape pas
+    //on recupere les valeurs des slots selectionnes
+    
+    $sql_param = buildSQLParam(count($timeslot_id_array));
+    
     $stmt = $dbh->prepare("SELECT * from Timeslot where ID_Timeslot in (".$sql_param.")");
     
     for($i = 0;$i<count($timeslot_id_array);$i++)
@@ -266,88 +261,119 @@ function recordData($timeslot_id_array)
             }
         }
     }
+}
+
+function testData($timeslot_id_array)
+{
+    global $error_list, $AGENDA_MIN_SLOT, $AGENDA_MAX_SLOT;
     
-//////// ENREGISTREMENT DES DONNEES ////////////////////////////////////////////////////////////////////////
-    if(count($error_list) == 0)
+    //verifier le nombre minimum de slot
+    if($AGENDA_MIN_SLOT > count($timeslot_id_array))
     {
-        if(array_key_exists("Envoyer",$_POST))
+        $error_list[] = "Le nombre de slot minimum possible est de ".$AGENDA_MIN_SLOT;
+        //pas necessaire de faire de return false, ce n'est pas une erreur grave
+    }
+    
+    //verifier le nombre maximal de slot
+    if($AGENDA_MAX_SLOT < count($timeslot_id_array))
+    {
+        $error_list[] = "Le nombre de slot maximum possible est de ".$AGENDA_MAX_SLOT;
+        return false; //evite d'afficher trop d'information d'overlap
+    }
+    
+    //verifier l'overlap des slots
+    if(isOverLap($timeslot_id_array))
+    {
+        return false;
+    }
+    
+    //s'il y a la moindre erreur, on interrompt l'ajout
+    if(count($error_list) > 0)
+    {
+        return false;
+    }
+    
+    return true;
+}
+
+function recordData($timeslot_id_array)
+{
+    global $dbh,$error_list;      
+        
+    //on ajoute dans la DB
+    if($dbh->beginTransaction())//transaction
+    {
+        //1) on verrouille, pas besoin transaction en serialisable
+        
+        //2) on verifie la disponibilite des plages
+        $sql_param = buildSQLParam(count($timeslot_id_array));
+        $sql_req = "SELECT Timeslot.Description, Timeslot.NumberOfPeople, Timeslot.NumberOfPeople - count(User_Timeslot.ID_Timeslot) AS remaining
+                               FROM Timeslot LEFT JOIN User_Timeslot ON Timeslot.ID_Timeslot = User_Timeslot.ID_Timeslot
+                               WHERE Timeslot.ID_Timeslot in (".$sql_param.")
+                               GROUP BY Timeslot.ID_Timeslot";
+        //echo $sql_req."<BR />";
+        $stmt = $dbh->prepare($sql_req);
+        
+        for($i = 0;$i<count($timeslot_id_array);$i++)
         {
-            //on ajoute dans la DB
-            if($dbh->beginTransaction())
+            $stmt->bindParam(":param".($i+1), $timeslot_id_array[$i]);
+        }
+        
+        $stmt->execute();
+        $remain_slot = $stmt->fetchAll();
+        
+        $all_available = true;
+        foreach($remain_slot as $index=>$value)
+        {
+            if($value["remaining"] == 0)
             {
-                //transaction
-                    //1) on verrouille, pas besoin transaction en serialisable
-                    
-                    //2) on verifie la disponibilite des plages
-                    $sql_req = "SELECT Timeslot.Description, Timeslot.NumberOfPeople, Timeslot.NumberOfPeople - count(User_Timeslot.ID_Timeslot) AS remaining
-                                           FROM Timeslot LEFT JOIN User_Timeslot ON Timeslot.ID_Timeslot = User_Timeslot.ID_Timeslot
-                                           WHERE Timeslot.ID_Timeslot in (".$sql_param.")
-                                           GROUP BY Timeslot.ID_Timeslot";
-                    //echo $sql_req."<BR />";
-                    $stmt = $dbh->prepare($sql_req);
-                    
-                    for($i = 0;$i<count($timeslot_id_array);$i++)
-                    {
-                        $stmt->bindParam(":param".($i+1), $timeslot_id_array[$i]);
-                    }
-                    
-                    $stmt->execute();
-                    $remain_slot = $stmt->fetchAll();
-                    
-                    $all_available = true;
-                    foreach($remain_slot as $index=>$value)
-                    {
-                        if($value["remaining"] == 0)
-                        {
-                            $all_available = false;
-                            break;
-                        }
-                    }
-                    
-                    if($all_available)
-                    {
-                        $first = true;
-                        $param_value = "";
-                        for($i = 0;$i<count($timeslot_id_array);$i++)
-                        {
-                            if($first)
-                            {
-                                $param_value = ":param".($i+1).", :user".($i+1);
-                                $first = false;
-                            }
-                            else
-                            {
-                                $param_value = ", :param".($i+1).", :user".($i+1);
-                            }
-                        }
-                        
-                        //3) on reserve les plages
-                        $stmt = $dbh->prepare("INSERT INTO User_Timeslot VALUES (".$param_value.")");
-                        
-                        for($i = 0;$i<count($timeslot_id_array);$i++)
-                        {
-                            $stmt->bindParam(":param".($i+1), $timeslot_id_array[$i]);
-                            $stmt->bindParam( ":user".($i+1), $_SESSION['user_id']);
-                        }
-                        
-                        $stmt->execute();
-                        
-                        //4) on commit
-                        $dbh->commit();
-                        
-                        return true;
-                    }
-                    else
-                    {
-                        $error_list[] = "Certaines plages horaires ne sont plus disponible, adaptez votre horaire";
-                        $dbh->rollBack();
-                    }
-            }
-            else
-            {
-                $error_list[] = "Erreur le systeme ne gère pas les transactions";
+                $all_available = false;
+                break;
             }
         }
+        
+        if($all_available)
+        {
+            $first = true;
+            $param_value = "";
+            for($i = 0;$i<count($timeslot_id_array);$i++)
+            {
+                if($first)
+                {
+                    $param_value = ":param".($i+1).", :user".($i+1);
+                    $first = false;
+                }
+                else
+                {
+                    $param_value = ", :param".($i+1).", :user".($i+1);
+                }
+            }
+            
+            //3) on reserve les plages
+            $stmt = $dbh->prepare("INSERT INTO User_Timeslot VALUES (".$param_value.")");
+            
+            for($i = 0;$i<count($timeslot_id_array);$i++)
+            {
+                $stmt->bindParam(":param".($i+1), $timeslot_id_array[$i]);
+                $stmt->bindParam( ":user".($i+1), $_SESSION['user_id']);
+            }
+            
+            $stmt->execute();
+            
+            //4) on commit
+            $dbh->commit();
+            
+            return true;
+        }
+        else
+        {
+            $error_list[] = "Certaines plages horaires ne sont plus disponible, adaptez votre horaire";
+            $dbh->rollBack();
+        }
+    }
+    else
+    {
+        $error_list[] = "Erreur le systeme ne gère pas les transactions";
     }
     
     return false;
@@ -517,25 +543,25 @@ function tryToAuth()
     $stmt = $dbh->prepare("SELECT * from Users where username = :uname and user_type = 'validated' and password = :password");        
     $stmt->bindParam(':uname', $_POST['username']);
     $stmt->bindParam(':password', md5($_POST['password']));
-	$stmt->execute();
+    $stmt->execute();
     
-	if( ($var = $stmt->fetch()))
-	{
-	    $_SESSION['user_id'] = $var["ID_Users"];
-	}
+    if( ($var = $stmt->fetch()))
+    {
+        $_SESSION['user_id'] = $var["ID_Users"];
+    }
 }
 
 function printAuthForm()
 {
     ?>
     <form method="POST" action="./agenda.php">
-    	    <table BORDER=0>
-    	    	<tr><td>Nom d'utilisateur : </td>          <td><INPUT type="text" name="username"></td></tr>
-    	    	<tr><td>Mot de passe : </td>               <td><INPUT type="password" name="password"></td></tr>
-    	    	<tr><td></td><td></td></tr>
-    	    	<tr><td></td>                              <td><br /><INPUT type="submit" value="Se connecter"></td></tr>
-    	    </table>
-    	</form>
+            <table BORDER=0>
+                <tr><td>Nom d'utilisateur : </td>          <td><INPUT type="text" name="username"></td></tr>
+                <tr><td>Mot de passe : </td>               <td><INPUT type="password" name="password"></td></tr>
+                <tr><td></td><td></td></tr>
+                <tr><td></td>                              <td><br /><INPUT type="submit" value="Se connecter"></td></tr>
+            </table>
+        </form>
     <?php
 }
 
@@ -617,10 +643,16 @@ else
 
     else
     {
-        //si l'utilisateur n'a pas encore fait de reservation et qu'il y a des donnees de post, on peut tenter un test ou un submit
-        if((array_key_exists("Test",$_POST) || array_key_exists("Envoyer",$_POST) )) // SI donnees de post
+        if(array_key_exists("Test",$_POST))
         {
-            $submitted_calendar = recordData($timeslot_id_array); //on essaye d'enregistrer ou de tester les donnees
+            testData($timeslot_id_array);
+        }
+        else if(array_key_exists("Envoyer",$_POST) )
+        {
+            if(testData($timeslot_id_array))
+            {
+                $submitted_calendar = recordData($timeslot_id_array); //on essaye d'enregistrer ou de tester les donnees
+            }
         }
     }
 
@@ -636,7 +668,12 @@ else
         $available_slot = getAllAvailableSlot(); //on recupere les slots horaire encore disponible        
         list($sorted_data,$selected_db_items) = sortData($available_slot, $timeslot_id_array); //on trie les données par jour et par event
         findMissingSlot($timeslot_id_array, $available_slot); //identification des plages qui aurait disparue depuis le précédent test
-        printBonus($selected_db_items); //affichage des bonus, s'il y en a
+        
+        if(count($error_list) > 0)//si erreur, on affiche pas les bonus
+        {
+            printBonus($selected_db_items); //affichage des bonus, s'il y en a
+        }
+        
         printError(); //on affiche les erreurs, s'il y en a
         printForm($sorted_data, $timeslot_id_array); //affichage du formulaire permettant de choisir ses slots
 
