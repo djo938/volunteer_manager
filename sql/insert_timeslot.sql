@@ -226,14 +226,15 @@ VALUES ('Bar','2013-09-08 00:00:00','2013-09-08 02:30:00',3);
 INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
 VALUES ('Contrôle feu de camp','2013-09-08 00:00:00','2013-09-08 02:30:00',1);
 
---INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
---VALUES ('Propreté du site','2013-09-07 09:00:00','2013-09-07 11:30:00',2);
---INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
---VALUES ('Propreté du site','2013-09-07 11:30:00','2013-09-07 14:00:00',1);
---INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
---VALUES ('Propreté du site','2013-09-07 14:00:00','2013-09-07 16:30:00',1);
---INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
---VALUES ('Propreté du site','2013-09-07 16:30:00','2013-09-07 19:00:00',1);
+INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
+VALUES ('Propreté du site','2013-09-07 09:00:00','2013-09-07 11:30:00',2);
+INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
+VALUES ('Propreté du site','2013-09-07 11:30:00','2013-09-07 14:00:00',1);
+INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
+VALUES ('Propreté du site','2013-09-07 14:00:00','2013-09-07 16:30:00',1);
+INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
+VALUES ('Propreté du site','2013-09-07 16:30:00','2013-09-07 19:00:00',1);
+
 INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
 VALUES ('Propreté du site','2013-09-07 19:00:00','2013-09-07 21:30:00',1);
 INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
@@ -442,20 +443,21 @@ VALUES ('Bar','2013-09-09 00:00:00','2013-09-09 02:30:00',3);
 INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
 VALUES ('Contrôle feu de camp','2013-09-09 00:00:00','2013-09-09 02:30:00',1);
 
---INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
---VALUES ('Propreté du site','2013-09-08 09:00:00','2013-09-08 11:30:00',2);
---INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
---VALUES ('Propreté du site','2013-09-08 11:30:00','2013-09-08 14:00:00',1);
---INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
---VALUES ('Propreté du site','2013-09-08 14:00:00','2013-09-08 16:30:00',1);
---INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
---VALUES ('Propreté du site','2013-09-08 16:30:00','2013-09-08 19:00:00',1);
-INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
+INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`, `Reliability_needed`, `Bonus_cat`) 
+VALUES ('Propreté du site','2013-09-08 09:00:00','2013-09-08 11:30:00',2, 0, 3);
+INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`, `Reliability_needed`, `Bonus_cat`) 
+VALUES ('Propreté du site','2013-09-08 11:30:00','2013-09-08 14:00:00',1, 0, 3);
+INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`, `Reliability_needed`, `Bonus_cat`) 
+VALUES ('Propreté du site','2013-09-08 14:00:00','2013-09-08 16:30:00',1, 0, 3);
+INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`, `Reliability_needed`, `Bonus_cat`) 
+VALUES ('Propreté du site','2013-09-08 16:30:00','2013-09-08 19:00:00',1, 0, 3);
+
+INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`, `Reliability_needed`, `Bonus_cat`) 
 VALUES ('Propreté du site','2013-09-08 19:00:00','2013-09-08 21:30:00',1);
-INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
+INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`, `Reliability_needed`, `Bonus_cat`) 
 VALUES ('Propreté du site','2013-09-08 21:30:00','2013-09-09 00:00:00',1);
-INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
-VALUES ('Propreté du site','2013-09-09 00:00:00','2013-09-09 02:30:00',0);
+INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`, `Reliability_needed`, `Bonus_cat`) 
+VALUES ('Propreté du site','2013-09-09 00:00:00','2013-09-09 02:30:00',1);
 
 INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
 VALUES ('Accueil VIP, Voisin, divers','2013-09-08 09:00:00','2013-09-08 11:30:00',1);
@@ -578,3 +580,10 @@ INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`
 VALUES ('Caisse vente entrées (responsable)','2013-09-08 18:55:00','2013-09-08 21:25:00',1);
 INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`) 
 VALUES ('Caisse vente entrées (responsable)','2013-09-08 21:10:00','2013-09-08 23:40:00',1);
+
+--4 avant
+INSERT INTO `Timeslot`(`Description`, `Start_time`, `End_time`, `NumberOfPeople`, `Reliability_needed`, `Bonus_cat`) 
+VALUES ('Propreté du site','2013-09-08 16:30:00','2013-09-08 19:00:00',5, 0, 4);
+
+--3 apres
+

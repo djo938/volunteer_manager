@@ -1,10 +1,10 @@
 <?php session_start(); ?>
 <html><head></head><body>
 <?php
-
-$debug = true; //TODO!!!!!!!!!!!!!!!!!!!!!!!!!! passer a false quand le debug est fini !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TODO
+$debug = true;
 
 include 'config.inc.php';
+include 'function.inc.php';
 
 try
 {
@@ -14,7 +14,7 @@ try
 }
 catch(PDOException $err)
 {
-    if($debug)
+    if($DEBUG)
     {
         echo "Erreur: ".$err;
     }
@@ -27,26 +27,6 @@ catch(PDOException $err)
 $error_list = array(); //liste des erreurs rencontrees
 
 //////////////// UTILS FUNCTION ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-function fromMySQLDatetimeToPHPDatetime($mysql_datetime)
-{
-    return DateTime::createFromFormat("Y-m-d H:i:s",$mysql_datetime);
-}
-
-function getSlotDescriptionFromDBSlot($value)
-{
-    $datetime_start = fromMySQLDatetimeToPHPDatetime($value["Start_time"]);
-    $datetime_end = fromMySQLDatetimeToPHPDatetime($value["End_time"]);
-    
-    return "\"".$value["Description"]."\" ".$datetime_start->format("H:i")."-".$datetime_end->format("H:i");
-}
-
-function getSlotStartDateFromDBSlot($value)
-{
-    $datetime_start = fromMySQLDatetimeToPHPDatetime($value["Start_time"]);
-    
-    return $datetime_start->format("l d F");
-}
 
 function buildSQLParam($array_size)
 {
@@ -67,82 +47,6 @@ function buildSQLParam($array_size)
 
 //////////////// PROCESS FUNCTION ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-function compute_bonus($dbh, $slot_list)
-{
-    //echo 'BONUS <BR />';
-    
-    //var_dump($slot_list);
-    
-    $value_to_print = array();
-    if(count($slot_list) > 0)
-    {
-        $bonus_to_load = array();
-    
-        $first = true;
-        $req_part = "";
-        //$i = 1;
-        foreach($slot_list as $index=>$value)
-        {
-            //si la plage n'est pas disponible, on ne la comptabilise plus
-            /*if($value["remaining"] == 0)
-            {
-                continue;
-            } XXX $slot_list est dejq epure*/
-            
-            if(array_key_exists($value["Bonus_cat"],$bonus_to_load))
-            {
-                $bonus_to_load[intval($value["Bonus_cat"])] += 1;
-            }
-            else
-            {
-                $bonus_to_load[intval($value["Bonus_cat"])] = 1;
-            
-                if($first)
-                {
-                    //$req_part = "(cat = :cat".$i." AND threshold <= :threshold".$i.")";
-                    $req_part = "(cat = ".$value["Bonus_cat"]." AND threshold <= :threshold".$value["Bonus_cat"].")";
-                    $first = false;
-                }
-                else
-                {
-                    //$req_part .= " OR (cat = :cat".$i." AND threshold <= :threshold".$i.")";
-                    $req_part .= " OR (cat = ".$value["Bonus_cat"]." AND threshold <= :threshold".$value["Bonus_cat"].")";
-                }
-                //$i += 1;
-            }
-        }
-    
-        $SQL = "SELECT description, max(threshold) FROM Bonus WHERE ".$req_part." GROUP BY cat";
-        //$SQL = "SELECT description, max(threshold) FROM Bonus WHERE (cat = 1 AND threshold <= 1) OR (cat = 2 AND threshold <= 2) GROUP BY cat";
-        //echo $SQL."<BR />";
-        $stmt = $dbh->prepare($SQL);
-    
-        //$i = 1;
-        //var_dump($bonus_to_load);
-        foreach($bonus_to_load as $key=>$value)
-        {
-            //echo gettype($key)." ".gettype($value)."<BR />";
-            //$stmt->bindParam(":cat".$i,$key,PDO::PARAM_INT);
-            $stmt->bindParam(":threshold".$key,$value,PDO::PARAM_INT);
-            //print "BIND ".$key." VALUE ".$value." <BR />";
-            //$i += 1;
-        }
-    
-        $stmt->execute();
-        //echo '<BR /><BR />';
-        //$stmt->debugDumpParams();
-        //echo '<BR /><BR />';
-        $a = $stmt->fetchAll();
-    
-        //var_dump($a);
-    
-        foreach($a as $index=>$value)
-        {
-            $value_to_print[] = $value["description"];
-        }
-    }
-    return $value_to_print;
-}
 
 function sortData(&$error_list,$db_data, $timeslot_id_array)
 {
@@ -365,20 +269,24 @@ function recordData($dbh, &$error_list,$timeslot_id_array)
             {
                 if($first)
                 {
-                    $param_value = ":param".($i+1).", :user".($i+1);
+                    $param_value = "(:param".($i+1).", :user".($i+1).")";
                     $first = false;
                 }
                 else
                 {
-                    $param_value = ", :param".($i+1).", :user".($i+1);
+                    $param_value .= ",(:param".($i+1).", :user".($i+1).")";
                 }
             }
             
             //3) on reserve les plages
-            $stmt = $dbh->prepare("INSERT INTO User_Timeslot VALUES (".$param_value.")");
+            $SQL_request = "INSERT INTO User_Timeslot VALUES ".$param_value;
+            echo $SQL_request."<BR />";
+            $stmt = $dbh->prepare($SQL_request);
             
             for($i = 0;$i<count($timeslot_id_array);$i++)
             {
+                echo ":param".($i+1)." ".$timeslot_id_array[$i]."<BR />";
+                echo  ":user".($i+1)." ".$_SESSION['user_id']."<BR />";
                 $stmt->bindParam(":param".($i+1), $timeslot_id_array[$i]);
                 $stmt->bindParam( ":user".($i+1), $_SESSION['user_id']);
             }
@@ -477,7 +385,8 @@ function tryToAuth($dbh)
     //on tente une auth
     $stmt = $dbh->prepare("SELECT * from Users where username = :uname and user_type = 'validated' and password = :password");        
     $stmt->bindParam(':uname', $_POST['username']);
-    $stmt->bindParam(':password', md5($_POST['password']));
+    $md5_mdp = md5($_POST['password']);
+    $stmt->bindParam(':password', $md5_mdp);
     $stmt->execute();
     
     if( ($var = $stmt->fetch()))
@@ -522,7 +431,8 @@ function getAllAvailableSlot($dbh)
                            WHERE Users.ID_Users = :user_id
                            AND Users.user_type = 'validated'
                            AND Timeslot.Reliability_needed <= Users.Reliability
-                           GROUP BY Timeslot.ID_Timeslot";
+                           GROUP BY Timeslot.ID_Timeslot
+                           ORDER BY Timeslot.Start_time ASC, Timeslot.Description ASC";
     
     /*$sql_req = "SELECT * FROM Timeslot t, Users u WHERE (SELECT count(*) FROM User_Timeslot ut 
                                                                            WHERE ut.ID_Timeslot = t.ID_Timeslot) < t.NumberOfPeople
@@ -655,16 +565,22 @@ function printBonus($dbh,$selected_db_items)
         echo "<h2> Bonus </h2>";
         foreach($bonus as $key=>$value)
         {
-            echo $value."<BR />";
+            echo $value["sum"]." fois : ".$value["Description"]."<BR />";
         }
     }
 }
 
-
 function printBonusTable($dbh)
 {
     //description, threshold, cat
-    $stmt = $dbh->prepare("SELECT * FROM Bonus INNER JOIN Bonus_cat on Bonus.cat = Bonus_cat.ID_Bonus_cat  ORDER BY Bonus.cat ASC, Bonus.threshold ASC"); 
+    $stmt = $dbh->prepare(" SELECT Bonus_cat.Description as descr, Bonus.threshold as thres, Bonus_items_bonus.bonus_count as count, Bonus_items.Description as itemdescr
+                            FROM Bonus_cat, Bonus, Bonus_items_bonus, Bonus_items
+                            WHERE Bonus.cat = Bonus_cat.ID_Bonus_cat
+                              AND Bonus.ID_Bonus = Bonus_items_bonus.ID_Bonus
+                              AND Bonus_items_bonus.ID_Bonus_item = Bonus_items.ID_Bonus_item
+                            ORDER BY Bonus_cat.Description ASC, Bonus.threshold ASC");
+    
+    //$stmt = $dbh->prepare("SELECT * FROM Bonus INNER JOIN Bonus_cat on Bonus.cat = Bonus_cat.ID_Bonus_cat  ORDER BY Bonus.cat ASC, Bonus.threshold ASC"); 
     $stmt->execute();
     $a = $stmt->fetchAll();
     
@@ -674,13 +590,15 @@ function printBonusTable($dbh)
     }
     echo "<h2> Table des Bonus </h2>";
     
-    $previous_id_cat = -1;
+    $previous_id_cat = "";
+    $previous_thres = -1;
     $first = true;
+    $first_thres = true;
     $first_line = "<tr>";
     $second_line = "<tr>";
     foreach($a as $k=>$v)
     {
-        if($v["cat"] != $previous_id_cat)
+        if($v["descr"] != $previous_id_cat)
         {
             if(!$first)
             {
@@ -690,19 +608,47 @@ function printBonusTable($dbh)
             {
                 $first = false;
             }
-            echo $v["Description"]." : ";
+            echo $v["descr"]." : ";
             echo "<table border=\"1\">";
             $first_line = "<tr>";
             $second_line = "<tr>";
-            $previous_id_cat = $v["cat"];
+            $previous_id_cat = $v["descr"];
         }
-        $first_line .= "<td>".$v["description"]."</td>";
-        $second_line .= "<td>".$v["threshold"]." plage(s) horaire(s) requise(s)</td>";
+        
+        if($previous_thres != $v["thres"])
+        {
+            if($first_thres)
+            {
+                $first_thres = false;
+            }
+            else
+            {
+                $first_line .= "</td>";
+            }
+            
+            $first_line .= "<td>".$v["count"]." * ".$v["itemdescr"];
+            $second_line .= "<td>".$v["thres"]." plage(s) horaire(s) requise(s)</td>";
+            
+            $previous_thres = $v["thres"];
+        }
+        else
+        {
+            $first_line .= "<BR />".$v["count"]." * ".$v["itemdescr"];
+        }
+        
+        
     }
     
     if(!$first)
     {
-        echo $first_line."</tr>".$second_line."</tr>"."</table>";
+        if(!$first_thres)
+        {
+            echo $first_line."</td></tr>".$second_line."</tr>"."</table>";
+        }
+        else
+        {
+            echo $first_line."</tr>".$second_line."</tr>"."</table>";
+        }
     }    
 }
 
@@ -772,7 +718,7 @@ try
         if($submitted_calendar) //l'utilisateur a deja enregistre son agenda
         {        
             printUserSlot($user_slot); //on affiche son planning
-            printBonus($user_slot);    //on affiche ses bonus     
+            printBonus($dbh,$user_slot);    //on affiche ses bonus     
         }
         else //l'utilisateur n'a pas encore enregistre son agenda
         {
@@ -786,6 +732,7 @@ try
             }
             
             printError($error_list); //on affiche les erreurs, s'il y en a
+            echo "<BR />";
             printForm($sorted_data, $timeslot_id_array); //affichage du formulaire permettant de choisir ses slots
             printBonusTable($dbh); //on affiche comment obtenir les bonus
             echo "<BR />";
@@ -794,7 +741,7 @@ try
 }
 catch(PDOException $err)
 {
-    if($debug)
+    if($DEBUG)
     {
         echo "Erreur: ".$err;
     }
