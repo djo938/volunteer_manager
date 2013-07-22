@@ -26,25 +26,6 @@ catch(PDOException $err)
 
 $error_list = array(); //liste des erreurs rencontrees
 
-//////////////// UTILS FUNCTION ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-function buildSQLParam($array_size)
-{
-    $first = true;
-    $sql_param = "";
-    for($i = 0;$i<$array_size;$i++)
-    {
-        if($first)
-        {
-            $sql_param = ":param".($i+1);
-            $first = false;
-            continue;
-        }
-        $sql_param .= ",:param".($i+1);
-    }
-    return $sql_param;
-}
-
 //////////////// PROCESS FUNCTION ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 

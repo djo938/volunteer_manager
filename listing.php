@@ -286,6 +286,186 @@ function FancyTable($pdf,$header, $data)
     $pdf->Cell(array_sum($w),0,'','T');
 }
 
+function buildVolunteerDocument($dbh,$userIDList, $bonus = true, $schedule = true)
+{
+    $page_array = array();    
+    foreach($userIDList as $k=>$v)
+    {
+        $user_schedule = getUserSchedule($dbh,$v["ID_Users"]);
+        $bonus_list = convertBonusList(compute_bonus($dbh,$user_schedule));
+
+        $a = array();
+        
+        if($schedule)
+        {
+            $a [] = "PLANNING";
+            $a [] = "";
+
+            foreach($user_schedule as $k=>$v)
+            {
+                $a [] = getSlotStartDateFromDBSlot($v)." : ".getSlotDescriptionFromDBSlot($v);
+            }
+
+            $a [] = "";
+            $a [] = "";
+        }
+        
+        if($bonus)
+        {
+            $a [] = "BONUS";
+            $a [] = "";
+            $a = array_merge($a,$bonus_list);
+        }
+        
+        $page_array [] = $a;
+    }
+    buildSeveralPagePDF($page_array);
+}
+
+function sortScheduleFromActivityID($dbh, $id_array=array())
+{
+    $sql_req = "SELECT Timeslot.Description, Timeslot.Start_time, Timeslot.End_time, Users.Name, Users.Family_name
+                FROM (Timeslot LEFT JOIN User_Timeslot ON Timeslot.ID_Timeslot = User_Timeslot.ID_Timeslot) LEFT JOIN Users ON Users.ID_Users = User_Timeslot.ID_Users";
+    
+    if(count($id_array) >0)
+    {
+        $sql_range = buildSQLParam(count($id_array));
+        $sql_req .= " WHERE Timeslot.ID_Timeslot in (".$sql_range.") ";
+    }
+    
+    $sql_req .= " ORDER BY Timeslot.Description ASC, Timeslot.Start_time ASC";
+
+    $stmt = $dbh->prepare($sql_req);
+    
+    for($i = 0;$i<count($id_array);$i++)
+    {
+        $stmt->bindParam(":param".($i+1), $id_array[$i]);
+    }
+    
+    $stmt->execute();
+    $activities = $stmt->fetchAll();
+    
+    //var_dump($activities);
+    
+    $current_act = NULL;
+    $to_return    = array();//tableau d'activite
+    
+    $current_day  = "2000-01-01 03:00:00";
+    $activity_days = array();//tableau de jour
+    
+    $current_timeslot = "03:00";
+    $timeslot_list = array();
+    
+    $user_list = array();//tableau d'utilisateur
+    
+    foreach($activities as $k=>$value)
+    {
+        //var_dump($to_return);echo "<BR /><BR />";
+        //echo $value["Description"]." ".$value["Start_time"]." ".$value["Name"]."<BR />";
+        $dtime = fromMySQLDatetimeToPHPDatetime($value["Start_time"]);
+        //changement d'activite
+        if($current_act != $value["Description"])
+        {
+            //echo "NEW DESC <BR />";
+            //reset the local var
+            $current_day = "2000-01-01 03:00:00";
+            $current_timeslot = NULL;
+            
+            //add the new table
+            unset($activity_days);
+            $activity_days = array();
+            $to_return[$value["Description"]] = &$activity_days;
+
+            //set the new limit
+            $current_act = $value["Description"];
+        }
+        
+        //changement de jour
+        if($value["Start_time"] > $current_day)
+        {
+            //echo "NEW DAY <BR />";
+            //reset the local var
+            $current_timeslot = NULL;
+            
+            //add the new table
+            unset($timeslot_list);
+            $timeslot_list = array();
+            $activity_days [$dtime->format("Y-m-d")] = &$timeslot_list;
+            
+            //application de la nouvelle limite
+            $current_day = buildLimitFromDBDatetime($value["Start_time"]);
+        }
+        
+        //changement de slot horaire
+        if($current_timeslot != $dtime->format("H:i"))
+        {
+            //echo "NEW TIME <BR />";
+            //add the new table
+            unset($user_list);
+            $user_list = array();
+            $timeslot_list[$dtime->format("H:i")] = &$user_list;
+            
+            //application de la nouvelle limite
+            $current_timeslot = $dtime->format("H:i");
+        }
+        
+        if($value["Name"] != NULL and $value["Family_name"] != NULL)
+        {
+            $user_list [] = $value["Name"]." ".$value["Family_name"];
+        }
+        
+    }
+    
+    return $to_return;
+}
+
+function build_schedule_activities($sorted_activity_list)
+{
+    //TODO 
+    /*$pdf = new FPDF();
+    $pdf->AddPage();
+    $pdf->SetFont('Arial','B',14);*/
+
+    foreach($sorted_activity_list as $activity=>$day_list)
+    {
+        //$pdf->AddPage();
+        echo $activity.'<BR />';
+        foreach($day_list as $day=>$slot_list)
+        {
+            echo "&nbsp;&nbsp;&nbsp;&nbsp;".$day.'<BR />';
+            foreach($slot_list as $time=>$user_list)
+            {
+                echo "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;".$time.'<BR />';
+                foreach($user_list as $index=>$user)
+                {
+                    echo "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;".$user.'<BR />';
+                }
+            }
+        }
+    }
+
+    //$pdf->Output();
+    exit();
+}
+
+function getActivityIdFromDescr($dbh, $descr)
+{
+    $sql_req = "SELECT ID_Timeslot FROM Timeslot WHERE Description = :descr";
+    $stmt = $dbh->prepare($sql_req);  
+    $stmt->bindParam(':descr', $descr);                                       
+    $stmt->execute();
+    
+    $res = $stmt->fetchAll();
+    
+    $to_ret = array();
+    foreach($res as $k=>$v)
+    {
+        $to_ret [] = $v["ID_Timeslot"];
+    }
+    
+    return $to_ret;
+}
+
 if(array_key_exists("Deconnection",$_POST))
 {
     unset($_SESSION['admin_id']);
@@ -316,72 +496,18 @@ try
         { 
             if($_GET["doc"] == "allschedule")
             {
-                $page_array = array();
                 $user_list = getUserList($dbh);
-                
-                foreach($user_list as $k=>$v)
-                {
-                    $user_schedule = getUserSchedule($dbh,$v["ID_Users"]);
-
-                    $a = array();
-                    $a [] = "PLANNING";
-                    $a [] = "";
-
-                    foreach($user_schedule as $k=>$v)
-                    {
-                        $a [] = getSlotStartDateFromDBSlot($v)." : ".getSlotDescriptionFromDBSlot($v);
-                    }
-                    
-                    $page_array [] = $a;
-                }
-                buildSeveralPagePDF($page_array);
+                buildVolunteerDocument($dbh,$user_list, false, true);
             }
             else if($_GET["doc"] == "allbonus")
             {
-                $page_array = array();
                 $user_list = getUserList($dbh);
-                
-                foreach($user_list as $k=>$v)
-                {
-                    $user_schedule = getUserSchedule($dbh,$v["ID_Users"]);
-                    $bonus_list = convertBonusList(compute_bonus($dbh,$user_schedule));
-
-                    $a = array();
-                    $a [] = "BONUS";
-                    $a [] = "";
-                    $a = array_merge($a,$bonus_list);
-                    
-                    $page_array [] = $a;
-                }
-                buildSeveralPagePDF($page_array);
+                buildVolunteerDocument($dbh,$user_list, true, false);
             }
             else if($_GET["doc"] == "allschedulebonus")
             {
-                $page_array = array();
                 $user_list = getUserList($dbh);
-                
-                foreach($user_list as $k=>$v)
-                {
-                    $user_schedule = getUserSchedule($dbh,$v["ID_Users"]);
-                    $bonus_list = convertBonusList(compute_bonus($dbh,$user_schedule));
-
-                    $a = array();
-                    $a [] = "PLANNING";
-                    $a [] = "";
-
-                    foreach($user_schedule as $k=>$v)
-                    {
-                        $a [] = getSlotStartDateFromDBSlot($v)." : ".getSlotDescriptionFromDBSlot($v);
-                    }
-
-                    $a [] = "";
-                    $a [] = "";
-                    $a [] = "BONUS";
-                    $a [] = "";
-                    $a = array_merge($a,$bonus_list);
-                    $page_array [] = $a;
-                }
-                buildSeveralPagePDF($page_array);
+                buildVolunteerDocument($dbh,$user_list, true, true);
             }
             else if($_GET["doc"] == "allbonus_compact")
             {
@@ -454,7 +580,8 @@ try
             }
             else if($_GET["doc"] == "allschedule_grid")
             {
-                //TODO
+                $schedule_grid = sortScheduleFromActivityID($dbh);
+                build_schedule_activities($schedule_grid);
             }
             else if($_GET["doc"] == "backupvolunteer")
             {
@@ -483,15 +610,8 @@ try
                 exit();
             }
             
-            $user_schedule = getUserSchedule($dbh,$_POST["volunteer_id"]);
-            $bonus_list = convertBonusList(compute_bonus($dbh,$user_schedule));
-            
-            $a = array();
-            $a [] = "BONUS";
-            $a [] = "";
-            $a = array_merge($a,$bonus_list);
-
-            buildPDF($a);
+            $user_list = array("ID_Users"=>$_POST["volunteer_id"]);
+            buildVolunteerDocument($dbh,$user_list, true, false);
         }
         else if(array_key_exists("getschedule",$_POST))
         {
@@ -501,18 +621,8 @@ try
                 exit();
             }
             
-            $user_schedule = getUserSchedule($dbh,$_POST["volunteer_id"]);
-            
-            $a = array();
-            $a [] = "PLANNING";
-            $a [] = "";
-            
-            foreach($user_schedule as $k=>$v)
-            {
-                $a [] = getSlotStartDateFromDBSlot($v)." : ".getSlotDescriptionFromDBSlot($v);
-            }
-            
-            buildPDF($a);
+            $user_list = array("ID_Users"=>$_POST["volunteer_id"]);
+            buildVolunteerDocument($dbh,$user_list, false, true);
         }
         else if(array_key_exists("getschedulebonus",$_POST))
         {
@@ -522,25 +632,8 @@ try
                 exit();
             }
             
-            $user_schedule = getUserSchedule($dbh,$_POST["volunteer_id"]);
-            $bonus_list = convertBonusList(compute_bonus($dbh,$user_schedule));
-            
-            $a = array();
-            $a [] = "PLANNING";
-            $a [] = "";
-            
-            foreach($user_schedule as $k=>$v)
-            {
-                $a [] = getSlotStartDateFromDBSlot($v)." : ".getSlotDescriptionFromDBSlot($v);
-            }
-            
-            $a [] = "";
-            $a [] = "";
-            $a [] = "BONUS";
-            $a [] = "";
-            $a = array_merge($a,$bonus_list);
-            
-            buildPDF($a);
+            $user_list = array("ID_Users"=>$_POST["volunteer_id"]);
+            buildVolunteerDocument($dbh,$user_list, true, true);
         }
         else if(array_key_exists("getactschedule",$_POST))
         {
@@ -550,7 +643,9 @@ try
                 exit();
             }
             
-            //TODO
+            $id_activity_list = getActivityIdFromDescr($dbh, $_POST["activity_name"]);
+            $schedule_grid = sortScheduleFromActivityID($dbh, $id_activity_list);
+            build_schedule_activities($schedule_grid);
         }
         else if(array_key_exists("getvolunteer",$_POST))
         {
