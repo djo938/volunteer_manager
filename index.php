@@ -121,7 +121,7 @@
             $stmt->bindParam(':backup', $secour);
             $stmt->bindParam(':uname', $_POST['username']);
             $md5_hash = md5($_POST['password1']);
-            $stmt->bindParam(':pwd', $md5_hash); //TODO hassh the password
+            $stmt->bindParam(':pwd', $md5_hash);
             if(!$stmt->execute())
             {
                 echo "<H1>Echec de l'ajout de l'utilisateur.  Si l'erreur persiste, merci de bien vouloir contacter l'administrateur &agrave; l'adresse suivante : webmaster@folkfestivalmarsinne.be</H1>";
@@ -145,7 +145,7 @@
             	    	<tr><td>Prenom : </td>                     <td><INPUT type="text" name="prenom" value="<?php echo $_POST['prenom']; ?>"></td></tr>
             	    	<tr><td>Adresse mail : </td>               <td><INPUT type="text" name="mail" value="<?php echo $_POST['mail']; ?>"></td></tr>
             	    	<tr><td>GSM : </td>                        <td><INPUT type="text" name="gsm" value="<?php echo $_POST['gsm']; ?>"></td></tr>
-            	    	<tr><td>B&eacute;n&eacute;vole de secour : </td> <td><INPUT type="checkbox" name="secour" <?php if($secour){echo "checked";} ?>></td></tr>
+            	    	<tr><td>B&eacute;n&eacute;vole de secours : </td> <td><INPUT type="checkbox" name="secour" <?php if($secour){echo "checked";} ?>></td></tr>
             	    	<tr><td>Nom d'utilisateur : </td>          <td><INPUT type="text" name="username" value="<?php echo $_POST['username']; ?>"></td></tr>
             	    	<tr><td>Mot de passe : </td>               <td><INPUT type="password" name="password1"></td></tr>
             	    	<tr><td>Mot de passe (2) : </td>               <td><INPUT type="password" name="password2"></td></tr>

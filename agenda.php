@@ -261,13 +261,13 @@ function recordData($dbh, &$error_list,$timeslot_id_array)
             
             //3) on reserve les plages
             $SQL_request = "INSERT INTO User_Timeslot VALUES ".$param_value;
-            echo $SQL_request."<BR />";
+            //echo $SQL_request."<BR />";
             $stmt = $dbh->prepare($SQL_request);
             
             for($i = 0;$i<count($timeslot_id_array);$i++)
             {
-                echo ":param".($i+1)." ".$timeslot_id_array[$i]."<BR />";
-                echo  ":user".($i+1)." ".$_SESSION['user_id']."<BR />";
+                //echo ":param".($i+1)." ".$timeslot_id_array[$i]."<BR />";
+                //echo  ":user".($i+1)." ".$_SESSION['user_id']."<BR />";
                 $stmt->bindParam(":param".($i+1), $timeslot_id_array[$i]);
                 $stmt->bindParam( ":user".($i+1), $_SESSION['user_id']);
             }
@@ -358,23 +358,6 @@ function recordData($dbh, &$error_list,$timeslot_id_array)
     }
 }
 */
-
-function tryToAuth($dbh)
-{   
-    unset($_SESSION['user_id']);
-    
-    //on tente une auth
-    $stmt = $dbh->prepare("SELECT * from Users where username = :uname and user_type = 'validated' and password = :password");        
-    $stmt->bindParam(':uname', $_POST['username']);
-    $md5_mdp = md5($_POST['password']);
-    $stmt->bindParam(':password', $md5_mdp);
-    $stmt->execute();
-    
-    if( ($var = $stmt->fetch()))
-    {
-        $_SESSION['user_id'] = $var["ID_Users"];
-    }
-}
 
 //////////////// GET DATA FUNCTION ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -502,26 +485,23 @@ function printForm($sorted_data, $timeslot_id_array)
     <?php
 }
 
-function printAuthForm()
-{
-    ?>
-    <form method="POST" action="./agenda.php">
-            <table BORDER=0>
-                <tr><td>Nom d'utilisateur : </td>          <td><INPUT type="text" name="username"></td></tr>
-                <tr><td>Mot de passe : </td>               <td><INPUT type="password" name="password"></td></tr>
-                <tr><td></td><td></td></tr>
-                <tr><td></td>                              <td><br /><INPUT type="submit" name="connect" value="Se connecter"></td></tr>
-            </table>
-        </form>
-    <?php
-}
-
 function printUserSlot($user_slot)
 {
     echo "<h2> Plages horaires </h2>";
+    $limit_day = "";
     foreach($user_slot as $key=>$value)
     {
-        echo getSlotDescriptionFromDBSlot($value)."<BR />";
+        if($limit_day < $value["Start_time"])
+        {
+            echo "<BR />";
+            $limit_day = buildLimitFromDBDatetime($value["Start_time"]);
+            $day_date = fromMySQLDatetimeToPHPDatetime($limit_day);
+            
+            $day_date->sub(new DateInterval("P1D"));
+            echo $day_date->format("l d F")."<BR />";
+        }
+        
+        echo "&nbsp;&nbsp;&nbsp;".getSlotDescriptionFromDBSlot($value)."<BR />";
     }
 }
 
@@ -650,7 +630,7 @@ try
 {
     if(array_key_exists("username",$_POST) && array_key_exists("password",$_POST) && array_key_exists("connect",$_POST))
     {
-        tryToAuth($dbh);
+        tryToAuth($dbh,'validated','user_id');
         $try_to_auth = true;
     }
 
@@ -658,7 +638,7 @@ try
     //////////////// NOT AUTHENTICATED PART //////////////////////////////////////////////////////////////////////////////////////////////////////////
     {
         //on affiche le formulaire d'auth
-        printAuthForm();
+        printAuthForm("agenda.php");
         
         if($try_to_auth)
         {
@@ -690,6 +670,12 @@ try
                 if(testData($dbh,$error_list,$timeslot_id_array))
                 {
                     $submitted_calendar = recordData($dbh,$error_list,$timeslot_id_array); //on essaye d'enregistrer ou de tester les donnees
+                
+                    //on recharge les slots user
+                    if($submitted_calendar)
+                    {
+                        $user_slot = getUserSlot($dbh);//on recupere les slots que l'utilisateur a reserve
+                    }
                 }
             }
         }

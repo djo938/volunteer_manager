@@ -2,6 +2,38 @@
 
 //////////////// UTILS FUNCTION ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+function tryToAuth($dbh, $user_type, $cookie_name)
+{   
+    unset($_SESSION[$cookie_name]);
+    
+    //on tente une auth
+    $stmt = $dbh->prepare("SELECT * from Users where username = :uname and user_type = :utype and password = :password");        
+    $stmt->bindParam(':uname', $_POST['username']);
+    $stmt->bindParam(':utype', $user_type);
+    $md5_mdp = md5($_POST['password']);
+    $stmt->bindParam(':password', $md5_mdp);
+    $stmt->execute();
+    
+    if( ($var = $stmt->fetch()))
+    {
+        $_SESSION[$cookie_name] = $var["ID_Users"];
+    }
+}
+
+function printAuthForm($target)
+{
+    ?>
+    <form method="POST" action="<?php echo $target; ?>">
+            <table BORDER=0>
+                <tr><td>Nom d'utilisateur : </td>          <td><INPUT type="text" name="username"></td></tr>
+                <tr><td>Mot de passe : </td>               <td><INPUT type="password" name="password"></td></tr>
+                <tr><td></td><td></td></tr>
+                <tr><td></td>                              <td><br /><INPUT type="submit" name="connect" value="Se connecter"></td></tr>
+            </table>
+        </form>
+    <?php
+}
+
 function buildLimitFromDBDatetime($value)
 {
     $new_next_limit = fromMySQLDatetimeToPHPDatetime($value);
@@ -33,7 +65,6 @@ function buildSQLParam($array_size)
     }
     return $sql_param;
 }
-
 
 function compute_bonus($dbh, $slot_list)
 {

@@ -4,8 +4,9 @@ include 'function.inc.php';
 require('fpdf.php');
 
 //TODO
-    //-mettre le nom de l'utilisateur au bon endroit dans le document
-    //-quand il y a zero plage et zero bonus, l'indiquer
+    //-interpreter les valeurs html en normale
+        //-notament pour les titres d'activite dans la grille horaire des activites
+    //titre document avec la liste des utilisateurs, peu etre trop grand
 
 try
 {
@@ -24,43 +25,20 @@ catch(PDOException $err)
     exit();
 }
 
-function tryToAuth($dbh)
-{   
-    unset($_SESSION['admin_id']);
-    
-    //on tente une auth
-    $stmt = $dbh->prepare("SELECT * from Users where username = :uname and user_type = 'admin' and password = :password");        
-    $stmt->bindParam(':uname', $_POST['username']);
-    $md5_mdp = md5($_POST['password']);
-    $stmt->bindParam(':password', $md5_mdp);
+//////////////// COUNT FUNCTION ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function getAllUserExceptAdmin($dbh)
+{
+    $sql_req = "SELECT count(*) as ucount FROM Users WHERE user_type != 'admin'";
+    $stmt = $dbh->prepare($sql_req);                                               
     $stmt->execute();
     
     if( ($var = $stmt->fetch()))
     {
-        $_SESSION['admin_id'] = $var["ID_Users"];
+        return $var["ucount"];
     }
-}
     
-function printAuthForm()
-{
-    ?>
-    <form method="POST" action="./listing.php">
-            <table BORDER=0>
-                <tr><td>Nom d'utilisateur : </td>          <td><INPUT type="text" name="username"></td></tr>
-                <tr><td>Mot de passe : </td>               <td><INPUT type="password" name="password"></td></tr>
-                <tr><td></td><td></td></tr>
-                <tr><td></td>                              <td><br /><INPUT type="submit" name="connect" value="Se connecter"></td></tr>
-            </table>
-        </form>
-    <?php
-}
-
-function getUserList($dbh)
-{
-    $sql_req = "SELECT ID_Users, Name, Family_name, user_type, Reliability FROM Users WHERE user_type != 'admin'";
-    $stmt = $dbh->prepare($sql_req);                                               
-    $stmt->execute();
-    return $stmt->fetchAll();
+    return 0;
 }
 
 function getValidatedUserCount($dbh)
@@ -119,6 +97,250 @@ function getAllSlotCount($dbh)
     return 0;
 }
 
+//////////////// PDF FUNCTION ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*function buildPDF($list)
+{
+    $pdf = new FPDF();
+    $pdf->AddPage();
+    $pdf->SetFont('Arial','B',14);
+    
+    foreach($list as $k=>$v) //Name, Family_name,GSM  
+    {
+        $pdf->MultiCell(0,10,$v);
+    }
+     
+    $pdf->Output();
+    exit();
+}
+*/
+
+/*function buildSeveralPagePDF($list)
+{
+    $pdf = new FPDF();
+    
+    foreach($list as $k=>$v)
+    {
+        $pdf->AddPage();
+        $pdf->SetFont('Arial','B',14);
+        
+        foreach($v as $ki=>$vi)
+        {
+            $pdf->MultiCell(0,10,$vi);
+        }
+    }
+    
+    $pdf->Output();
+    exit();
+}
+*/
+
+function buildSeveralPagePDF_v2($page_list)
+{
+    $pdf = new FPDF();
+    
+    foreach($page_list as $main_title=>$title_list)
+    {
+         $pdf->AddPage();
+         $pdf->SetFont('Arial','B',22);
+         $pdf->MultiCell(0,15,$main_title);
+         
+         foreach($title_list as $title=>$lines)
+         {
+             $pdf->SetFont('Arial','B',14);
+             $pdf->MultiCell(0,7,$title);
+             $pdf->SetFont('Arial','B',12);
+             foreach($lines as $i=>$line)
+             {
+                 $pdf->MultiCell(0,7,$line);
+             }
+         }
+    }
+    
+    $pdf->Output();
+    exit();
+}
+
+function FancyTable($pdf,$header, $data)
+{
+    // Couleurs, épaisseur du trait et police grasse
+    $pdf->SetFillColor(255,0,0);
+    $pdf->SetTextColor(255);
+    $pdf->SetDrawColor(128,0,0);
+    $pdf->SetLineWidth(.3);
+    $pdf->SetFont('Arial','B',7);
+    // En-tête
+    $w = array(30, 22, 38, 46, 55, 16, 18, 32);
+    for($i=0;$i<count($w);$i++)
+        $pdf->Cell($w[$i],7,$header[$i],1,0,'C',true);
+    $pdf->Ln();
+    // Restauration des couleurs et de la police
+    $pdf->SetFillColor(224,235,255);
+    $pdf->SetTextColor(0);
+    $pdf->SetFont('','',10);
+    // Données
+    $fill = false;
+    $counter = 0;
+    foreach($data as $row)
+    {
+        $pdf->Cell($w[0],6,$row[0],'LR',0,'L',$fill);
+        $pdf->Cell($w[1],6,$row[1],'LR',0,'L',$fill);
+        $pdf->Cell($w[2],6,$row[2],'LR',0,'L',$fill);
+        $pdf->Cell($w[3],6,$row[3],'LR',0,'L',$fill);
+        $pdf->Cell($w[4],6,$row[4],'LR',0,'L',$fill);
+        $pdf->Cell($w[5],6,$row[5],'LR',0,'L',$fill);
+        $pdf->Cell($w[6],6,$row[6],'LR',0,'L',$fill);
+        $pdf->Cell($w[7],6,$row[7],'LR',0,'L',$fill);
+        
+        $pdf->Ln();
+        $fill = !$fill;
+        
+        $counter += 1;
+        if($counter == 20)
+        {
+            $pdf->AddPage("L");
+            $counter = 0;
+        }
+    }
+    // Trait de terminaison
+    $pdf->Cell(array_sum($w),0,'','T');
+}
+
+function printVolunteerList($list, $title)
+{
+    $pdf = new FPDF();
+    $pdf->AddPage();
+    
+    $pdf->SetFont('Arial','B',16);
+    $pdf->MultiCell(0,20,$title);
+    
+    $pdf->SetFont('Arial','B',14);
+    
+    foreach($list as $k=>$v) //Name, Family_name,GSM  
+    {
+        $pdf->MultiCell(0,10,$v["Name"]." ".$v["Family_name"]." : ".$v["GSM"]);
+    }
+     
+    $pdf->Output();
+    exit();
+}
+
+function build_schedule_activities($sorted_activity_list)
+{
+    $pdf = new FPDF();
+    //$pdf->AddPage();
+    //$pdf->SetFont('Arial','B',14);
+
+    foreach($sorted_activity_list as $activity=>$day_list)
+    {
+        $pdf->AddPage();
+        $pdf->SetFont('Arial','BU',14);
+        //echo $activity.'<BR />';
+        $pdf->cell(0,7,$activity);
+        $pdf->ln();
+        foreach($day_list as $day=>$slot_list)
+        {
+            $pdf->SetFont('Arial','U',12);
+            //echo "&nbsp;&nbsp;&nbsp;&nbsp;".$day.'<BR />';
+            $pdf->cell(0,7,$day);
+            $pdf->ln(10);
+            
+            $pdf->SetFont('Arial','',10);
+            $max_user = 0;
+            
+            $line_to_write = array();//contient les lignes d'utilisateurs
+            
+            $cell_width = 23;
+            $i = 0;
+            foreach($slot_list as $time=>$user_list)
+            {
+                $pdf->Cell($cell_width,7,$time,1);
+                if(count($user_list) > $max_user)
+                {
+                    $max_user = count($user_list);
+                }
+                
+                foreach($user_list as $index=>$user)
+                {
+                    //ligne      == $index
+                    //colonne    == $i
+                    
+                    if(!array_key_exists($index, $line_to_write))
+                    {
+                        $line_to_write[$index] = array();
+                    }
+                    
+                    $line_to_write[$index][$i] = $user;
+                }
+
+                $i += 1;
+            }
+            $pdf->ln();
+            $pdf->SetFont('Arial','',8);
+            $line_counter = 0;
+            foreach($line_to_write as $i=>$line)
+            {
+                if(($line_counter+1) == count($line_to_write))
+                {
+                    $border = "BLR";
+                }
+                else
+                {
+                    $border = "LR";
+                }
+                
+                
+                for($i=0;$i<count($slot_list);$i+=1)
+                {
+                    
+                    if(!array_key_exists($i, $line))
+                    {
+                        $pdf->Cell($cell_width,7," ",$border);
+                    }
+                    else
+                    {
+                        $pdf->Cell($cell_width,7,"-".$line[$i],$border);
+                    }
+                }
+                $pdf->ln();
+                $line_counter += 1;
+            }
+            
+            $pdf->ln(7);
+        }
+    }
+
+    $pdf->Output();
+    exit();
+}
+
+//////////////// LIST FUNCTION ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+ *  get all user except admin
+ */
+function getUserList($dbh)
+{
+    $sql_req = "SELECT ID_Users, Name, Family_name, user_type, Reliability 
+                FROM Users 
+                WHERE user_type != 'admin'";
+                
+    $stmt = $dbh->prepare($sql_req);                                               
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
+function getValidatedUserList($dbh)
+{
+    $sql_req = "SELECT ID_Users, Name, Family_name, user_type, Reliability 
+                FROM Users 
+                WHERE user_type = 'validated'";
+                
+    $stmt = $dbh->prepare($sql_req);                                               
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
 function getActivityList($dbh)
 {
     $sql_req = "SELECT DISTINCT Description FROM Timeslot";
@@ -172,54 +394,32 @@ function getVolunteerListFromActivityName($dbh,$name)
     return $stmt->fetchAll();
 }
 
-function printVolunteerList($list)
+function getBonusName($dbh)
 {
-    $pdf = new FPDF();
-    $pdf->AddPage();
-    $pdf->SetFont('Arial','B',14);
+    $sql_req = "SELECT Description from Bonus_items";
+                
+    $stmt = $dbh->prepare($sql_req);
+    $stmt->execute();
     
-    foreach($list as $k=>$v) //Name, Family_name,GSM  
-    {
-        $pdf->MultiCell(0,10,$v["Name"]." ".$v["Family_name"]." : ".$v["GSM"]);
-    }
-     
-    $pdf->Output();
-    exit();
+    return $stmt->fetchAll();
 }
 
-function buildPDF($list)
+function getUserName($dbh, $userID)
 {
-    $pdf = new FPDF();
-    $pdf->AddPage();
-    $pdf->SetFont('Arial','B',14);
+    $sql_req = "SELECT Name, Family_name FROM Users WHERE ID_Users = :iduser";
+    $stmt = $dbh->prepare($sql_req);
+    $stmt->bindParam(':iduser', $userID);                                             
+    $stmt->execute();
     
-    foreach($list as $k=>$v) //Name, Family_name,GSM  
+    if( ($var = $stmt->fetch()))
     {
-        $pdf->MultiCell(0,10,$v);
+        return $var["Name"]." ".$var["Family_name"];
     }
-     
-    $pdf->Output();
-    exit();
+    
+    return "UNKNOWN USER";
 }
 
-function buildSeveralPagePDF($list)
-{
-    $pdf = new FPDF();
-    
-    foreach($list as $k=>$v)
-    {
-        $pdf->AddPage();
-        $pdf->SetFont('Arial','B',14);
-        
-        foreach($v as $ki=>$vi)
-        {
-            $pdf->MultiCell(0,10,$vi);
-        }
-    }
-    
-    $pdf->Output();
-    exit();
-}
+//////////////// UTILS FUNCTION ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function convertBonusList($list)
 {
@@ -231,76 +431,27 @@ function convertBonusList($list)
     return $to_ret;
 }
 
-function getBonusName($dbh)
-{
-    $sql_req = "SELECT Description from Bonus_items";
-                
-    $stmt = $dbh->prepare($sql_req);
-    $stmt->execute();
-    
-    return $stmt->fetchAll();
-}
-
-function FancyTable($pdf,$header, $data)
-{
-    // Couleurs, épaisseur du trait et police grasse
-    $pdf->SetFillColor(255,0,0);
-    $pdf->SetTextColor(255);
-    $pdf->SetDrawColor(128,0,0);
-    $pdf->SetLineWidth(.3);
-    $pdf->SetFont('Arial','B',7);
-    // En-tête
-    $w = array(30, 22, 38, 46, 55, 16, 18, 32);
-    for($i=0;$i<count($w);$i++)
-        $pdf->Cell($w[$i],7,$header[$i],1,0,'C',true);
-    $pdf->Ln();
-    // Restauration des couleurs et de la police
-    $pdf->SetFillColor(224,235,255);
-    $pdf->SetTextColor(0);
-    $pdf->SetFont('','',10);
-    // Données
-    $fill = false;
-    $counter = 0;
-    foreach($data as $row)
-    {
-        $pdf->Cell($w[0],6,$row[0],'LR',0,'L',$fill);
-        $pdf->Cell($w[1],6,$row[1],'LR',0,'L',$fill);
-        $pdf->Cell($w[2],6,$row[2],'LR',0,'L',$fill);
-        $pdf->Cell($w[3],6,$row[3],'LR',0,'L',$fill);
-        $pdf->Cell($w[4],6,$row[4],'LR',0,'L',$fill);
-        $pdf->Cell($w[5],6,$row[5],'LR',0,'L',$fill);
-        $pdf->Cell($w[6],6,$row[6],'LR',0,'L',$fill);
-        $pdf->Cell($w[7],6,$row[7],'LR',0,'L',$fill);
-        
-        $pdf->Ln();
-        $fill = !$fill;
-        
-        $counter += 1;
-        if($counter == 20)
-        {
-            $pdf->AddPage("L");
-            $counter = 0;
-        }
-    }
-    // Trait de terminaison
-    $pdf->Cell(array_sum($w),0,'','T');
-}
-
 function buildVolunteerDocument($dbh,$userIDList, $bonus = true, $schedule = true)
 {
-    $page_array = array();    
+    $page_array = array();
     foreach($userIDList as $k=>$v)
     {
         $user_schedule = getUserSchedule($dbh,$v["ID_Users"]);
         $bonus_list = convertBonusList(compute_bonus($dbh,$user_schedule));
-
-        $a = array();
+        $user_name = getUserName($dbh, $v["ID_Users"]);
+        
+        $page = array();
         
         if($schedule)
         {
-            $a [] = "PLANNING";
+            $a = array();
             $a [] = "";
 
+            if(count($user_schedule) == 0)
+            {
+                $a [] = "Pas de planning.";
+            }
+            
             foreach($user_schedule as $k=>$v)
             {
                 $a [] = getSlotStartDateFromDBSlot($v)." : ".getSlotDescriptionFromDBSlot($v);
@@ -308,23 +459,35 @@ function buildVolunteerDocument($dbh,$userIDList, $bonus = true, $schedule = tru
 
             $a [] = "";
             $a [] = "";
+            $page["PLANNING"] = $a;
         }
         
         if($bonus)
         {
-            $a [] = "BONUS";
+            $a = array();
             $a [] = "";
-            $a = array_merge($a,$bonus_list);
+            
+            if(count($user_schedule) == 0)
+            {
+                $a [] = "Pas de bonnus.";
+            }
+            else
+            {
+                $a = array_merge($a,$bonus_list);
+            }
+
+            $page["BONUS"] = $a;
         }
         
-        $page_array [] = $a;
+        $page_array [$user_name] = $page;
     }
-    buildSeveralPagePDF($page_array);
+    buildSeveralPagePDF_v2($page_array);
+    //buildSeveralPagePDF($page_array);
 }
 
 function sortScheduleFromActivityID($dbh, $id_array=array())
 {
-    $sql_req = "SELECT Timeslot.Description, Timeslot.Start_time, Timeslot.End_time, Users.Name, Users.Family_name
+    $sql_req = "SELECT Timeslot.Description, Timeslot.Start_time, Timeslot.End_time, Timeslot.NumberOfPeople, Users.Name, Users.Family_name
                 FROM (Timeslot LEFT JOIN User_Timeslot ON Timeslot.ID_Timeslot = User_Timeslot.ID_Timeslot) LEFT JOIN Users ON Users.ID_Users = User_Timeslot.ID_Users";
     
     if(count($id_array) >0)
@@ -363,6 +526,7 @@ function sortScheduleFromActivityID($dbh, $id_array=array())
         //var_dump($to_return);echo "<BR /><BR />";
         //echo $value["Description"]." ".$value["Start_time"]." ".$value["Name"]."<BR />";
         $dtime = fromMySQLDatetimeToPHPDatetime($value["Start_time"]);
+        $detime = fromMySQLDatetimeToPHPDatetime($value["End_time"]);
         //changement d'activite
         if($current_act != $value["Description"])
         {
@@ -397,55 +561,34 @@ function sortScheduleFromActivityID($dbh, $id_array=array())
         }
         
         //changement de slot horaire
-        if($current_timeslot != $dtime->format("H:i"))
+        $current_time = $dtime->format("H:i")." - ".$detime->format("H:i");
+        if($current_timeslot != $current_time)
         {
             //echo "NEW TIME <BR />";
             //add the new table
             unset($user_list);
             $user_list = array();
-            $timeslot_list[$dtime->format("H:i")] = &$user_list;
+            $timeslot_list[$current_time] = &$user_list;
+            
+            for($i=0;$i<$value["NumberOfPeople"];$i++)
+            {
+                $user_list[$i] = "";
+            }
             
             //application de la nouvelle limite
-            $current_timeslot = $dtime->format("H:i");
+            $user_index = 0;
+            $current_timeslot = $current_time;
         }
         
         if($value["Name"] != NULL and $value["Family_name"] != NULL)
         {
-            $user_list [] = $value["Name"]." ".$value["Family_name"];
+            $user_list [$user_index] = $value["Name"]." ".$value["Family_name"];
+            $user_index += 1;
         }
         
     }
     
     return $to_return;
-}
-
-function build_schedule_activities($sorted_activity_list)
-{
-    //TODO 
-    /*$pdf = new FPDF();
-    $pdf->AddPage();
-    $pdf->SetFont('Arial','B',14);*/
-
-    foreach($sorted_activity_list as $activity=>$day_list)
-    {
-        //$pdf->AddPage();
-        echo $activity.'<BR />';
-        foreach($day_list as $day=>$slot_list)
-        {
-            echo "&nbsp;&nbsp;&nbsp;&nbsp;".$day.'<BR />';
-            foreach($slot_list as $time=>$user_list)
-            {
-                echo "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;".$time.'<BR />';
-                foreach($user_list as $index=>$user)
-                {
-                    echo "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;".$user.'<BR />';
-                }
-            }
-        }
-    }
-
-    //$pdf->Output();
-    exit();
 }
 
 function getActivityIdFromDescr($dbh, $descr)
@@ -466,6 +609,8 @@ function getActivityIdFromDescr($dbh, $descr)
     return $to_ret;
 }
 
+//////////////// MAIN ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 if(array_key_exists("Deconnection",$_POST))
 {
     unset($_SESSION['admin_id']);
@@ -476,13 +621,13 @@ try
     $try_to_auth = false;
     if(array_key_exists("username",$_POST) && array_key_exists("password",$_POST) && array_key_exists("connect",$_POST))
     {
-        tryToAuth($dbh);
+        tryToAuth($dbh,'admin','admin_id');
         $try_to_auth = true;
     }
 
     if(!array_key_exists("admin_id",$_SESSION))
     {
-        printAuthForm();
+        printAuthForm("listing.php");
     
         if($try_to_auth)
         {
@@ -496,17 +641,17 @@ try
         { 
             if($_GET["doc"] == "allschedule")
             {
-                $user_list = getUserList($dbh);
+                $user_list = getValidatedUserList($dbh); 
                 buildVolunteerDocument($dbh,$user_list, false, true);
             }
             else if($_GET["doc"] == "allbonus")
             {
-                $user_list = getUserList($dbh);
+                $user_list = getValidatedUserList($dbh);
                 buildVolunteerDocument($dbh,$user_list, true, false);
             }
             else if($_GET["doc"] == "allschedulebonus")
             {
-                $user_list = getUserList($dbh);
+                $user_list = getValidatedUserList($dbh); 
                 buildVolunteerDocument($dbh,$user_list, true, true);
             }
             else if($_GET["doc"] == "allbonus_compact")
@@ -585,14 +730,14 @@ try
             }
             else if($_GET["doc"] == "backupvolunteer")
             {
-                $list = getVolunteerList($dbh,false);
-                printVolunteerList($list);
+                $list = getVolunteerList($dbh,true);
+                printVolunteerList($list, "BENEVOLES DE SECOURS");
                 
             }
             else if($_GET["doc"] == "volunteer")
             {
-                $list = getVolunteerList($dbh,true);
-                printVolunteerList($list);
+                $list = getVolunteerList($dbh,false);
+                printVolunteerList($list,"BENEVOLES");
             }
             else
             {
@@ -610,7 +755,7 @@ try
                 exit();
             }
             
-            $user_list = array("ID_Users"=>$_POST["volunteer_id"]);
+            $user_list = array(array("ID_Users"=>$_POST["volunteer_id"]));
             buildVolunteerDocument($dbh,$user_list, true, false);
         }
         else if(array_key_exists("getschedule",$_POST))
@@ -621,7 +766,7 @@ try
                 exit();
             }
             
-            $user_list = array("ID_Users"=>$_POST["volunteer_id"]);
+            $user_list = array(array("ID_Users"=>$_POST["volunteer_id"]));
             buildVolunteerDocument($dbh,$user_list, false, true);
         }
         else if(array_key_exists("getschedulebonus",$_POST))
@@ -632,7 +777,7 @@ try
                 exit();
             }
             
-            $user_list = array("ID_Users"=>$_POST["volunteer_id"]);
+            $user_list = array(array("ID_Users"=>$_POST["volunteer_id"]));
             buildVolunteerDocument($dbh,$user_list, true, true);
         }
         else if(array_key_exists("getactschedule",$_POST))
@@ -656,11 +801,11 @@ try
             }
             
             $list = getVolunteerListFromActivityName($dbh,$_POST["activity_name"]);
-            printVolunteerList($list);
+            printVolunteerList($list,"BENEVOLE POUR ".$_POST["activity_name"]);
         }
         else
         {
-            $user_list = getUserList($dbh);
+            $user_list = getValidatedUserList($dbh);
             $total_slot_count = getAllSlotCount($dbh);
             $recorded_slot_count = getRecordedSlotCount($dbh);
             $activity_list = getActivityList($dbh);
@@ -669,8 +814,8 @@ try
             
             echo "<form METHOD=\"POST\" ACTION=\"agenda.php\"><INPUT type=\"submit\" name=\"Deconnection\" value=\"Deconnection\"></form>";
             
-            echo "Nombre d'utilisateur inscrit : ".count($user_list)."<BR />";
-            echo "Nombre d'utilisateur valid&eacute;s : ".getValidatedUserCount($dbh)."<BR />"; 
+            echo "Nombre d'utilisateur inscrit : ".getAllUserExceptAdmin($dbh)."<BR />";
+            echo "Nombre d'utilisateur valid&eacute;s : ".count($user_list)."<BR />"; 
             echo "Nombre d'utilisateur non valid&eacute;s : ".getNonValidatedUserCount($dbh)."<BR />"; 
             echo "Nombre de plages horaires TOTALE : ".$total_slot_count."<BR />";
             echo "Nombre de plages horaires RESERVEES : ".$recorded_slot_count."<BR />";
