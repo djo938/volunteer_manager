@@ -870,4 +870,6 @@ catch(PDOException $err)
 
     echo "<BR/>Il semblerait qu'un probleme avec la base de donn&eacute;es ait eu lieu.  Si le probl&egrave;me persiste, contactez l'administrateur du site: webmaster@folkfestivalmarsinne.be";
 }   
+
+$dbh = null;
 ?>

@@ -1,6 +1,8 @@
 <?php session_start(); ?>
 <html><head></head><body>
 <?php
+set_error_handler("var_dump");
+
 $debug = true;
 
 include 'config.inc.php';
@@ -197,10 +199,43 @@ function testData($dbh, &$error_list, $timeslot_id_array)
 }
 
 function recordData($dbh, &$error_list,$timeslot_id_array)
-{         
-    //on ajoute dans la DB
-    if($dbh->beginTransaction())//transaction
+{   
+    //lock the database
+    for($i=0; $i < 3; $i++)
     {
+        $statement = $dbh->query("SELECT GET_LOCK('lock1',10) as lock_result");
+        $result = $statement->fetch();
+    
+        if(count($result) == 0)
+        {
+            $error_list [] = "Echec de verouillage de la base de données (1)";
+            return false;
+        }
+        
+        if($result["lock_result"] == 0)//timeout
+        {
+            continue;
+        }
+        
+        if($result["lock_result"] == 1)//success
+        {
+            break;
+        }
+        
+        //erreur
+        $error_list [] = "Echec de verouillage de la base de données (2)";
+        return false;
+    }
+    //echo "i = ".$i."<BR />";
+    if($i == 3)
+    {
+        $error_list [] = "Echec de verouillage de la base de données (3)";
+        return false;
+    }
+    
+    //on ajoute dans la DB
+    //if($dbh->beginTransaction())//transaction
+    //{
         //1) on verrouille, pas besoin transaction en serialisable
         
         //2) on verifie la disponibilite des plages
@@ -210,8 +245,8 @@ function recordData($dbh, &$error_list,$timeslot_id_array)
                                WHERE Timeslot.ID_Timeslot in (".$sql_param.")
                                AND Users.ID_Users = :user_id
                                AND Timeslot.Reliability_needed <= Users.Reliability
-                               GROUP BY Timeslot.ID_Timeslot
-                               FOR UPDATE";
+                               GROUP BY Timeslot.ID_Timeslot";
+                               //FOR UPDATE";
         //echo $sql_req."<BR />";
         $stmt = $dbh->prepare($sql_req);
         
@@ -224,73 +259,73 @@ function recordData($dbh, &$error_list,$timeslot_id_array)
         $stmt->execute();
         $remain_slot = $stmt->fetchAll();
         
+        /*if($_SESSION['user_id'] == 10)
+        {
+            sleep(20);
+        }*/
+        
         //le nombre de slot disponible est il le meme que le nombre demandé (intervient dans un cas de changement de reliability/suppression de plage)
         if(count($timeslot_id_array) != count($remain_slot))
         {
-            $error_list[] = "Certaines plages horaires ne sont plus disponible, adaptez votre horaire";
-            $dbh->rollBack();
+            $error_list[] = "Echec de l'enregistrement (1)"; //un message plus precis sera calcule plus loin
+            //$dbh->rollBack();
+            $dbh->query("SELECT RELEASE_LOCK('lock1') as lock_result");
             return false;
         }
         
-        $all_available = true;
+        //tous les slots sont ils disponible ?
         foreach($remain_slot as $index=>$value)
         {
             if($value["remaining"] == 0)
             {
-                $all_available = false;
-                break;
+                $error_list[] = "Echec de l'enregistrement (2)"; //un message plus precis sera calcule plus loin
+                //$dbh->rollBack();
+                $dbh->query("SELECT RELEASE_LOCK('lock1') as lock_result");
+                return false;
             }
         }
         
-        if($all_available)
+        $first = true;
+        $param_value = "";
+        for($i = 0;$i<count($timeslot_id_array);$i++)
         {
-            $first = true;
-            $param_value = "";
-            for($i = 0;$i<count($timeslot_id_array);$i++)
+            if($first)
             {
-                if($first)
-                {
-                    $param_value = "(:param".($i+1).", :user".($i+1).")";
-                    $first = false;
-                }
-                else
-                {
-                    $param_value .= ",(:param".($i+1).", :user".($i+1).")";
-                }
+                $param_value = "(:param".($i+1).", :user".($i+1).")";
+                $first = false;
             }
-            
-            //3) on reserve les plages
-            $SQL_request = "INSERT INTO User_Timeslot VALUES ".$param_value;
-            //echo $SQL_request."<BR />";
-            $stmt = $dbh->prepare($SQL_request);
-            
-            for($i = 0;$i<count($timeslot_id_array);$i++)
+            else
             {
-                //echo ":param".($i+1)." ".$timeslot_id_array[$i]."<BR />";
-                //echo  ":user".($i+1)." ".$_SESSION['user_id']."<BR />";
-                $stmt->bindParam(":param".($i+1), $timeslot_id_array[$i]);
-                $stmt->bindParam( ":user".($i+1), $_SESSION['user_id']);
+                $param_value .= ",(:param".($i+1).", :user".($i+1).")";
             }
-            
-            $stmt->execute();
-            
-            //4) on commit
-            $dbh->commit();
-            
-            return true;
         }
-        else
+        
+        //3) on reserve les plages
+        $SQL_request = "INSERT INTO User_Timeslot VALUES ".$param_value;
+        //echo $SQL_request."<BR />";
+        $stmt = $dbh->prepare($SQL_request);
+        
+        for($i = 0;$i<count($timeslot_id_array);$i++)
         {
-            $error_list[] = "Certaines plages horaires ne sont plus disponible, adaptez votre horaire";
-            $dbh->rollBack();
+            //echo ":param".($i+1)." ".$timeslot_id_array[$i]."<BR />";
+            //echo  ":user".($i+1)." ".$_SESSION['user_id']."<BR />";
+            $stmt->bindParam(":param".($i+1), $timeslot_id_array[$i]);
+            $stmt->bindParam( ":user".($i+1), $_SESSION['user_id']);
         }
-    }
+        
+        $stmt->execute();
+        
+        //4) on commit
+        //$dbh->commit();
+        $dbh->query("SELECT RELEASE_LOCK('lock1') as lock_result");
+        return true;
+
+    /*}
     else
     {
         $error_list[] = "Erreur le systeme ne g&egrave;re pas les transactions";
-    }
-    
-    return false;
+    }*/
+
 }
 
 /*function findMissingSlot($dbh,&$error_list,$timeslot_id_array, $available_slot)
@@ -643,7 +678,7 @@ try
         if($try_to_auth)
         {
             echo '<H3>Echec de connexion, le nom d\'utilisateur ou le mot de passe sont peu &ecirc;tre incorrects.  
-            Le compte n\'a peu &ecirc;tre pas encore &eacute;t&eacute; valid&eacute; par un administrateur.  Si le probl&egrave;me persiste, contactez un administrateur: webmaster@folkfestivalmarsinne.be</H3>';
+            Le compte n\'a peu &ecirc;tre pas encore &eacute;t&eacute; valid&eacute; par un administrateur.  </H3>';
         }
     }
     //////////////// AUTHENTICATED PART /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -657,6 +692,9 @@ try
         $user_slot = getUserSlot($dbh);//on recupere les slots que l'utilisateur a reserve 
         $submitted_calendar = (count($user_slot) > 0);//est ce que l'utilisateur a deja reserve ?
         
+        /// TEST ///
+        //$timeslot_id_array [] = 1;
+        
         //////////////// RECORD/TEST ///////////////////////////////////////////////////
 
         if(! $submitted_calendar)
@@ -667,8 +705,11 @@ try
             }
             else if(array_key_exists("Envoyer",$_POST) )
             {
-                if(testData($dbh,$error_list,$timeslot_id_array))
+                $test_result = testData($dbh,$error_list,$timeslot_id_array);
+                if($test_result)
                 {
+                    //TODO repeter x fois si prblm de deadlock
+                    
                     $submitted_calendar = recordData($dbh,$error_list,$timeslot_id_array); //on essaye d'enregistrer ou de tester les donnees
                 
                     //on recharge les slots user
@@ -689,7 +730,7 @@ try
         }
         else //l'utilisateur n'a pas encore enregistre son agenda
         {
-            $available_slot = getAllAvailableSlot($dbh); //on recupere les slots horaire encore disponible        
+            $available_slot = getAllAvailableSlot($dbh); //on recupere les slots horaire encore disponible                    
             list($sorted_data,$selected_db_items) = sortData($error_list,$available_slot, $timeslot_id_array); //on trie les donn&eacute;es par jour et par event
             //findMissingSlot($dbh,$error_list, $timeslot_id_array, $available_slot); //identification des plages qui aurait disparue depuis le pr&eacute;c&eacute;dent test
             
@@ -715,6 +756,8 @@ catch(PDOException $err)
     
     echo "<BR/>Il semblerait qu'un probleme avec la base de donn&eacute;es ait eu lieu.  Si le probl&egrave;me persiste, contactez l'administrateur du site: webmaster@folkfestivalmarsinne.be";
 }
+
+$dbh = null;
 ?>
 </body></html>
 
