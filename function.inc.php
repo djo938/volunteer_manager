@@ -80,13 +80,25 @@ function compute_bonus($dbh, $slot_list)
         $first = true;
         $req_part = "";
         //$i = 1;
+        
         foreach($slot_list as $index=>$value)
+        {
+            if(array_key_exists($value["Bonus_cat"],$bonus_to_load))
+            {
+                $bonus_to_load[intval($value["Bonus_cat"])] += 1;
+            }
+            else
+            {
+                $bonus_to_load[intval($value["Bonus_cat"])] = 1;
+            }
+        }
+        /*foreach($slot_list as $index=>$value)
         {
             //si la plage n'est pas disponible, on ne la comptabilise plus
             /*if($value["remaining"] == 0)
             {
                 continue;
-            } XXX $slot_list est dejq epure*/
+            } XXX $slot_list est dejq epure/
             
             if(array_key_exists($value["Bonus_cat"],$bonus_to_load))
             {
@@ -99,26 +111,57 @@ function compute_bonus($dbh, $slot_list)
                 if($first)
                 {
                     //$req_part = "(cat = :cat".$i." AND threshold <= :threshold".$i.")";
-                    $req_part = "(cat = ".$value["Bonus_cat"]." AND threshold <= :threshold".$value["Bonus_cat"].")";
+                    //$req_part = "(cat = ".$value["Bonus_cat"]." AND threshold <= :threshold".$value["Bonus_cat"].")";
+                    $req_part = "Bonus_items_bonus.ID_Bonus = (SELECT ID_Bonus 
+                                        				  	   FROM Bonus B
+                                        					   WHERE B.cat = ".$value["Bonus_cat"]." AND B.threshold = (SELECT max(Bonus.threshold)
+                                        												   	      FROM Bonus 
+                                        													      WHERE cat = B.cat AND threshold <= :threshold".$value["Bonus_cat"]." 
+                                        													      GROUP BY Bonus.cat))";
                     $first = false;
                 }
                 else
                 {
                     //$req_part .= " OR (cat = :cat".$i." AND threshold <= :threshold".$i.")";
-                    $req_part .= " OR (cat = ".$value["Bonus_cat"]." AND threshold <= :threshold".$value["Bonus_cat"].")";
+                    //$req_part .= " OR (cat = ".$value["Bonus_cat"]." AND threshold <= :threshold".$value["Bonus_cat"].")";
+                    $req_part .= " OR Bonus_items_bonus.ID_Bonus = (SELECT ID_Bonus 
+                                        				  	   FROM Bonus B
+                                        					   WHERE B.cat = ".$value["Bonus_cat"]." AND B.threshold = (SELECT max(Bonus.threshold)
+                                        												   	      FROM Bonus 
+                                        													      WHERE cat = B.cat AND threshold <= :threshold".$value["Bonus_cat"]." 
+                                        													      GROUP BY Bonus.cat))";
                 }
                 //$i += 1;
             }
+        }*/
+    
+        foreach($bonus_to_load as $cat=>$count)
+        {
+            if($first)
+            {
+                $req_part = "Bonus_items_bonus.ID_Bonus = (SELECT ID_Bonus 
+                                    				  	   FROM Bonus B
+                                    					   WHERE B.cat = ".$cat." AND B.threshold = (SELECT max(Bonus.threshold)
+                                    												   	      FROM Bonus 
+                                    													      WHERE cat = B.cat AND threshold <= ".$count." 
+                                    													      GROUP BY Bonus.cat))";
+                $first = false;
+            }
+            else
+            {
+                $req_part .= " OR Bonus_items_bonus.ID_Bonus = (SELECT ID_Bonus 
+                                    				  	   FROM Bonus B
+                                    					   WHERE B.cat = ".$cat." AND B.threshold = (SELECT max(Bonus.threshold)
+                                    												   	      FROM Bonus 
+                                    													      WHERE cat = B.cat AND threshold <= ".$count." 
+                                    													      GROUP BY Bonus.cat))";
+            }
         }
     
-        $SQL = "SELECT Bonus_items.Description, sum(Bonus_items_bonus.bonus_count) as sum
+        $SQL = "SELECT Bonus_items.Description, SUM(Bonus_items_bonus.bonus_count) AS sum
                 FROM Bonus_items_bonus, Bonus_items
                 WHERE Bonus_items_bonus.ID_Bonus_item = Bonus_items.ID_Bonus_item
-                AND Bonus_items_bonus.ID_Bonus in 
-                (SELECT T.id FROM ( SELECT ID_Bonus as id, max(Bonus.threshold) as max
-                	FROM Bonus 
-                	WHERE ".$req_part."	
-                	GROUP BY Bonus.cat) T)
+                AND (".$req_part.")
                 GROUP BY Bonus_items.ID_Bonus_item";
     
         /*$SQL = "SELECT description, max(threshold) 
@@ -131,14 +174,14 @@ function compute_bonus($dbh, $slot_list)
     
         //$i = 1;
         //var_dump($bonus_to_load);
-        foreach($bonus_to_load as $key=>$value)
+        /*foreach($bonus_to_load as $key=>$value)
         {
             //echo gettype($key)." ".gettype($value)."<BR />";
             //$stmt->bindParam(":cat".$i,$key,PDO::PARAM_INT);
             $stmt->bindParam(":threshold".$key,$value,PDO::PARAM_INT);
-            //print "BIND ".$key." VALUE ".$value." <BR />";
+            print "BIND :threshold".$key." VALUE ".$value." <BR />";
             //$i += 1;
-        }
+        }*/
     
         $stmt->execute();
         //echo '<BR /><BR />';
@@ -146,6 +189,7 @@ function compute_bonus($dbh, $slot_list)
         //echo '<BR /><BR />';
         $a = $stmt->fetchAll();
     
+        //echo "<BR /><BR />";
         //var_dump($a);
     
         /*foreach($a as $index=>$value)
