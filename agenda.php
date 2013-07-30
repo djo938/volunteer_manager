@@ -75,6 +75,7 @@ function sortData(&$error_list,$db_data, $timeslot_id_array)
             //echo count($current_day)."<BR />";
             //var_dump($current_day);echo "<BR /><BR />";
             //nouvelle ensemble des events du jour
+            ksort($current_day);
             unset($current_day);
             $current_day = array();
 
@@ -107,17 +108,19 @@ function sortData(&$error_list,$db_data, $timeslot_id_array)
         //ajout de l'event
         $current_day[$value["Description"]][] = $value;
     }
-    //echo count($current_day)."<BR />";
     
-    $diff_slot_not_available = array_diff($timeslot_id_array, $still_available_slot);
-    
+    //on trie les activites du dernier jour (au pire le tableau est vide)
+    ksort($current_day);
+
     //s'il y a une difference ici, certains slot horraires ont ete supprime ou ont eu un changement de reliability
+    $diff_slot_not_available = array_diff($timeslot_id_array, $still_available_slot);
     if(count($diff_slot_not_available) > 0)
     {
         //indiquer le nombre de slot qui ne sont plus visible
         $error_list[] = "Certaines plages horaires ne sont plus disponible, adaptez votre horaire";
     }
     
+    //sort on keyname    
     return array($sorted_data,$selected_db_items);
 }
 
@@ -431,7 +434,7 @@ function getAllAvailableSlot($dbh)
                            AND Users.user_type = 'validated'
                            AND Timeslot.Reliability_needed <= Users.Reliability
                            GROUP BY Timeslot.ID_Timeslot
-                           ORDER BY Timeslot.Start_time ASC, Timeslot.Description ASC";
+                           ORDER BY Timeslot.Start_time ASC";
     
     /*$sql_req = "SELECT * FROM Timeslot t, Users u WHERE (SELECT count(*) FROM User_Timeslot ut 
                                                                            WHERE ut.ID_Timeslot = t.ID_Timeslot) < t.NumberOfPeople
@@ -553,7 +556,7 @@ function printError(&$error_list)
     }
 }
 
-function printBonus($dbh,$selected_db_items)
+function printBonus($dbh,$selected_db_items, $printzero)
 {
     $bonus = compute_bonus($dbh,$selected_db_items);
     if(count($bonus) > 0)
@@ -562,6 +565,14 @@ function printBonus($dbh,$selected_db_items)
         foreach($bonus as $key=>$value)
         {
             echo $value["sum"]." fois : ".$value["Description"]."<BR />";
+        }
+    }
+    else 
+    {
+        if($printzero)
+        {
+            echo "<h2> Bonus </h2>";
+            echo "Pas de bonus<BR />";
         }
     }
 }
@@ -574,7 +585,7 @@ function printBonusTable($dbh)
                             WHERE Bonus.cat = Bonus_cat.ID_Bonus_cat
                               AND Bonus.ID_Bonus = Bonus_items_bonus.ID_Bonus
                               AND Bonus_items_bonus.ID_Bonus_item = Bonus_items.ID_Bonus_item
-                            ORDER BY Bonus_cat.Description ASC, Bonus.threshold ASC");
+                            ORDER BY Bonus_cat.order ASC, Bonus.threshold ASC");
     
     //$stmt = $dbh->prepare("SELECT * FROM Bonus INNER JOIN Bonus_cat on Bonus.cat = Bonus_cat.ID_Bonus_cat  ORDER BY Bonus.cat ASC, Bonus.threshold ASC"); 
     $stmt->execute();
@@ -677,7 +688,7 @@ try
         
         if($try_to_auth)
         {
-            echo '<H3>Echec de connexion, le nom d\'utilisateur ou le mot de passe sont peu &ecirc;tre incorrects.  
+            echo '<H3>Echec de connexion, le nom d\'utilisateur ou le mot de passe sont peut &ecirc;tre incorrects.  
             Le compte n\'a peu &ecirc;tre pas encore &eacute;t&eacute; valid&eacute; par un administrateur.  </H3>';
         }
     }
@@ -691,7 +702,7 @@ try
         $timeslot_id_array = getTimeslotID(); //RECUPERATION DE LA LISTE DES CASES COCHEE, id des slots selectionnes par l'utilisateur (s'il y en a)
         $user_slot = getUserSlot($dbh);//on recupere les slots que l'utilisateur a reserve 
         $submitted_calendar = (count($user_slot) > 0);//est ce que l'utilisateur a deja reserve ?
-        
+        $testOrSubmit = false;
         /// TEST ///
         //$timeslot_id_array [] = 1;
         
@@ -702,9 +713,11 @@ try
             if(array_key_exists("Test",$_POST))
             {
                 testData($dbh,$error_list,$timeslot_id_array);
+                $testOrSubmit = true;
             }
             else if(array_key_exists("Envoyer",$_POST) )
             {
+                $testOrSubmit = true;
                 $test_result = testData($dbh,$error_list,$timeslot_id_array);
                 if($test_result)
                 {
@@ -726,7 +739,7 @@ try
         if($submitted_calendar) //l'utilisateur a deja enregistre son agenda
         {        
             printUserSlot($user_slot); //on affiche son planning
-            printBonus($dbh,$user_slot);    //on affiche ses bonus     
+            printBonus($dbh,$user_slot, true);    //on affiche ses bonus     
         }
         else //l'utilisateur n'a pas encore enregistre son agenda
         {
@@ -736,7 +749,7 @@ try
             
             if(count($error_list) == 0)//si erreur, on affiche pas les bonus
             {
-                printBonus($dbh,$selected_db_items); //affichage des bonus, s'il y en a
+                printBonus($dbh,$selected_db_items, $testOrSubmit); //affichage des bonus, s'il y en a
             }
             
             printError($error_list); //on affiche les erreurs, s'il y en a
