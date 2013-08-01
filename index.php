@@ -1,63 +1,93 @@
+<?php session_start(); ?>
 <html><head></head><body>
 	<?php
+    
+    include 'config.inc.php';
+    
+    function printForm($data = array())
+    {
+        ?>
+            <form method="POST" action="./index.php">
+            	    <table BORDER=0>
+            	    	<tr><td>Nom (*) : </td>                                         <td><INPUT type="text" name="nom" <?php if(array_key_exists('nom',$data)){echo "value=\"".$_POST['nom']."\"";} ?>></td></tr>
+            	    	<tr><td>Prenom (*) : </td>                                      <td><INPUT type="text" name="prenom" <?php if(array_key_exists('prenom',$data)){echo "value=\"".$_POST['prenom']."\"";} ?>></td></tr>
+            	    	<tr><td>Adresse postale (*) : </td>                             <td><INPUT type="text" name="postal" <?php if(array_key_exists('postal',$data)){echo "value=\"".$_POST['postal']."\"";} ?>></td></tr>
+            	    	<tr><td>Adresse email (*) : </td>                               <td><INPUT type="text" name="mail" <?php if(array_key_exists('mail',$data)){echo "value=\"".$_POST['mail']."\"";} ?>></td></tr>
+            	    	<tr><td>GSM (*) : </td>                                         <td><INPUT type="text" name="gsm" <?php if(array_key_exists('gsm',$data)){echo "value=\"".$_POST['gsm']."\"";} ?>></td></tr>
+            	    	<tr><td>T&eacute;l&eacute;phone fix : </td>                     <td><INPUT type="text" name="fix" <?php if(array_key_exists('fix',$data)){echo "value=\"".$_POST['fix']."\"";} ?>></td></tr>
+            	    	<tr><td>B&eacute;n&eacute;vole de secours : </td>               <td><INPUT type="checkbox" name="secour" <?php if(array_key_exists('secour',$data)){echo "checked";} ?>></td></tr>
+            	    	<tr><td>Nom d'utilisateur (*) : </td>                           <td><INPUT type="text" name="username" <?php if(array_key_exists('username',$data)){echo "value=\"".$_POST['username']."\"";} ?>></td></tr>
+            	    	<tr><td>Brevet de secourisme (ou &eacute;quivalent) : </td>     <td><INPUT type="text" name="mede" <?php if(array_key_exists('mede',$data)){echo "value=\"".$_POST['mede']."\"";} ?>></td></tr>
+            	    	<tr><td>Mot de passe (*) : </td>                                <td><INPUT type="password" name="password1"></td></tr>
+            	    	<tr><td>Mot de passe (2) (*) : </td>                            <td><INPUT type="password" name="password2"></td></tr>
+            	    	<tr><td>Permis et voiture : </td>                               <td>non<INPUT type=radio name="car" value="non" <?php if(!array_key_exists('car',$data) || ($data['car'] != "licence" && $data['car'] != "car")){echo "checked";} ?>>, juste le permis B<INPUT type=radio name="car" value="licence" <?php if(array_key_exists('car',$data) && $data['car'] == "licence"){echo "checked";} ?>>, voiture et permis B<INPUT type=radio name="car" value="car" <?php if(array_key_exists('car',$data) && $data['car'] == "car"){echo "checked";} ?>></td></tr>
+            	    	<tr><td></td><td></td></tr>
+            	    	<tr><td COLSPAN="2"><img id="captcha" src="/securimage/securimage_show.php" alt="CAPTCHA Image" /></td></tr>
+            	    	<tr><td COLSPAN="2">	<input type="text" name="captcha_code" size="10" maxlength="6" /> <a href="#" onclick="document.getElementById('captcha').src = '/securimage/securimage_show.php?' + Math.random(); return false">[ Different Image ]</a></td></tr>
+            	    	<tr><td></td><td></td></tr>
+            	    	<tr><td COLSPAN="2">(*) = champs obligatoire</td></tr>
+            	    	<tr><td></td>                              <td><br /><INPUT type="submit" value="Inscription"></td></tr>
+            	    </table>
+            	</form>
+    	<?php
+    }
     
     function startswith($hay, $needle) {
       return substr($hay, 0, strlen($needle)) === $needle;
     }
-    
-    include 'config.inc.php';
-    
-	//var_dump($_POST);echo "<BR />";
-	
-	if(isset($_POST['nom']) && isset($_POST['prenom']) && isset($_POST['mail']) && isset($_POST['gsm']) 
-	   && isset($_POST['username']) && isset($_POST['password1']) && isset($_POST['password2']))
+    	
+	if(   array_key_exists('nom', $_POST) 
+	   && array_key_exists('prenom',$_POST) 
+	   && array_key_exists('postal',$_POST) 
+	   && array_key_exists('mail',$_POST) 
+	   && array_key_exists('gsm',$_POST) 
+	   && array_key_exists('username',$_POST) 
+	   && array_key_exists('password1',$_POST) 
+	   && array_key_exists('password2', $_POST))
 	{
 	    $error_array = array();
+	    
+	    include_once './securimage/securimage.php';
+
+        $securimage = new Securimage();
+        
+        if ($securimage->check($_POST['captcha_code']) == false)
+        {
+            $error_array['captcha'] = "Le captcha est incorrect";
+        }
 	    
 		if(isset($_POST['secour']))
 		{$secour = true;}
 		else
 		{$secour = false;}
 
+        if(array_key_exists('fix',$_POST) )
+        {$fix = $_POST["fix"];}
+        else
+        {$fix = "";}
+        
+        if(array_key_exists('mede',$_POST) )
+        {$mede = $_POST["mede"];}
+        else
+        {$mede = "";}
+
 		//aucun champs ne doit etre vide
-		if(strlen($_POST['nom']) == 0)
-		{
-			$error_array['nom'] = "Le nom ne peut pas &#234;tre vide";
-		}
-
-		if(strlen($_POST['prenom']) == 0)
-		{
-			$error_array['prenom'] = "Le prenom ne peut pas &#234;tre vide";
-		}
-
-		if(strlen($_POST['mail']) == 0)
-		{
-			$error_array['mail'] = "Le mail ne peut pas &#234;tre vide";
-		}
-
-		if(strlen($_POST['gsm']) == 0)
-		{
-			$error_array['gsm'] = "Le gsm ne peut pas &#234;tre vide";
-		}
-
-		if(strlen($_POST['username']) == 0)
-		{
-			$error_array['username'] = "Le nom d'utilisateur ne peut pas &#234;tre vide";
-		}
-
-		if(strlen($_POST['password1']) == 0)
-		{
-			$error_array['password1'] = "Le mot de passe ne peut pas &#234;tre vide";
-		}
+		if(strlen($_POST['nom']) == 0)       {$error_array['nom'] = "Le nom ne peut pas &#234;tre vide";}
+		if(strlen($_POST['prenom']) == 0)    {$error_array['prenom'] = "Le prenom ne peut pas &#234;tre vide";}
+        if(strlen($_POST['postal']) == 0)    {$error_array['postal'] = "L'adresse postale ne peut pas &#234;tre vide";}
+		if(strlen($_POST['mail']) == 0)      {$error_array['mail'] = "Le mail ne peut pas &#234;tre vide";}
+		if(strlen($_POST['gsm']) == 0)       {$error_array['gsm'] = "Le gsm ne peut pas &#234;tre vide";}
+		if(strlen($_POST['username']) == 0)  {$error_array['username'] = "Le nom d'utilisateur ne peut pas &#234;tre vide";}
+		if(strlen($_POST['password1']) == 0) {$error_array['password1'] = "Le mot de passe ne peut pas &#234;tre vide";}
 
         //validitee adresse mail
-	    if(! isset($error_array['mail']) && ! filter_var($_POST['mail'], FILTER_VALIDATE_EMAIL))
+	    if(! filter_var($_POST['mail'], FILTER_VALIDATE_EMAIL))
 		{
 		    $error_array['mail'] = "Adresse email invalide";
 		}
 
 		//verifier le mot de passe
-		if(! isset($error_array['password1']) && $_POST['password1'] != $_POST['password2'])
+		if( $_POST['password1'] != $_POST['password2'])
 		{
 		    $error_array['password1'] = "La r&eacute;p&eacute;tition du mot de passe n'est pas valide";
 		}
@@ -65,6 +95,7 @@
 		//check validite GSM
 		if(!isset($error_array['gsm']))
 		{
+		    //retire tout sauf les chiffres
 		    $clean_gsm = preg_replace("/\D+/","", $_POST['gsm']);
             //echo $clean_gsm."<BR />";
 
@@ -88,99 +119,126 @@
             }
 		}
 		
-
-		//TODO ajouter et verifier le capcha
+		//check fix
+		if(strlen($fix) > 0)
+		{
+		    //9 et commence par 0
+		    //10 et commence par 32
+		    //12 et commence par 0032
+		    $clean_fix = preg_replace("/\D+/","", $fix);
+		    
+		    $expected_length = 0;
+            if(startswith($clean_fix,"0032")) //0032 491 23 45 67
+            {
+                $expected_length = 12;
+            }
+            else if(startswith($clean_fix,"32"))//32 491 23 45 67
+            {
+                $expected_length = 10;
+            }
+            else//0 491 23 45 67
+            {
+                $expected_length = 9;
+            }
+            
+            if(strlen($clean_fix) != $expected_length)
+            {
+                $error_array['fix'] = "format t&eacute;l&eacute;phone fixe invalide (valeurs accept&eacute;es: 012 34 56 78, +3212 34 56 78, 0032 12 34 56 78)";
+            }
+		}
 
         //check the DB and insert
         $dbh = new PDO('mysql:host='.$DATABASE_SERVER.';dbname='.$DATABASE_NAME.'', $DATABASE_USERNAME, $DATABASE_PASSWORD);
-        if(!isset($error_array['username']))
+        $dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        try
         {
-            //verifier l'existance du username
-    		
-    		$stmt = $dbh->prepare("SELECT * from Users where username = :uname");
-    		$stmt->bindParam(':uname', $_POST['username']);
-    		$stmt->execute();
-
-    		if($stmt->fetch())
-    		{
-    			//il y a deja un username avec le nom
-                $error_array['username'] = "l'utilisateur existe d&eacute;j&agrave;";
-    		}
-        }
-        
-        if(count($error_array) == 0)
-        {
-            //TODO manage the error (try/catch)
-            
-            //si pas d'erreur, ajouter l'utilisateur
-            $stmt = $dbh->prepare("INSERT INTO Users(Name, Family_name, Mail, GSM, backup, username, password, user_type) VALUES(:name, :fname, :mail, :gsm, :backup, :uname, :pwd, 'new')");
-            $stmt->bindParam(':name', $_POST['nom']);
-            $stmt->bindParam(':fname', $_POST['prenom']);
-            $stmt->bindParam(':mail', $_POST['mail']);
-            $stmt->bindParam(':gsm', $_POST['gsm']);
-            $stmt->bindParam(':backup', $secour);
-            $stmt->bindParam(':uname', $_POST['username']);
-            $md5_hash = md5($_POST['password1']);
-            $stmt->bindParam(':pwd', $md5_hash);
-            if(!$stmt->execute())
+            //check username
+            if(!isset($error_array['username']))
             {
-                echo "<H1>Echec de l'ajout de l'utilisateur.  Si l'erreur persiste, merci de bien vouloir contacter l'administrateur &agrave; l'adresse suivante : webmaster@folkfestivalmarsinne.be</H1>";
+                //verifier l'existance du username
+    		
+        		$stmt = $dbh->prepare("SELECT * from Users where username = :uname");
+        		$stmt->bindParam(':uname', $_POST['username']);
+        		$stmt->execute();
+
+        		if($stmt->fetch())
+        		{
+        			//il y a deja un username avec le nom
+                    $error_array['username'] = "l'utilisateur existe d&eacute;j&agrave;";
+        		}
+            }
+        
+            //check mail
+            if(!isset($error_array['mail']))
+            {
+                //verifier l'existance du username
+    		
+        		$stmt = $dbh->prepare("SELECT * from Users where Mail = :mail");
+        		$stmt->bindParam(':mail', $_POST['mail']);
+        		$stmt->execute();
+
+        		if($stmt->fetch())
+        		{
+        			//il y a deja un username avec le nom
+                    $error_array['mail'] = "l'adresse mail existe d&eacute;j&agrave;";
+        		}
+            }
+        
+            if(count($error_array) == 0)
+            {            
+                //si pas d'erreur, ajouter l'utilisateur
+                $stmt = $dbh->prepare("INSERT INTO Users(Name,  Family_name, Mail,  GSM,  backup,  username, password, user_type, register_date, postal, fix,  medecine) 
+                                                  VALUES(:name, :fname,      :mail, :gsm, :backup, :uname,   :pwd,     'new',     NOW(),        :postal, :fix, :mede)");
+                $stmt->bindParam(':name', $_POST['nom'], PDO::PARAM_STR, 300);
+                $stmt->bindParam(':fname', $_POST['prenom'], PDO::PARAM_STR, 300);
+                $stmt->bindParam(':mail', $_POST['mail'], PDO::PARAM_STR, 300);
+                $stmt->bindParam(':gsm', $_POST['gsm'], PDO::PARAM_STR, 30);
+                $stmt->bindParam(':backup', $secour);
+                $stmt->bindParam(':uname', $_POST['username'], PDO::PARAM_STR, 300);
+                $md5_hash = md5($_POST['password1']);
+                $stmt->bindParam(':pwd', $md5_hash, PDO::PARAM_STR, 300);
+                $stmt->bindParam(':postal', $_POST['postal'], PDO::PARAM_STR, 300);
+                $stmt->bindParam(':fix', $fix, PDO::PARAM_STR, 30);
+                $stmt->bindParam(':mede', $mede, PDO::PARAM_STR, 300);
+            
+            
+                if(!$stmt->execute())
+                {
+                    echo "<H1>Echec de l'ajout de l'utilisateur.  Si l'erreur persiste, merci de bien vouloir contacter l'administrateur &agrave; l'adresse suivante : webmaster@folkfestivalmarsinne.be</H1>";
+                }
+                else
+                {
+                    echo "<H1>Votre candidature a bien &eacute;t&eacute; enregistr&eacute;e, vous allez &ecirc;tre contact&eacute; par mail pour la suite</H1>";
+                    //TODO envoyer un mail
+                
+                }
+                echo "L'&eacute;quipe technique du site web folkfestivalmarsinne.be    ";
             }
             else
             {
-                echo "<H1>Votre candidature a bien &eacute;t&eacute; enregistr&eacute;e, vous allez &ecirc;tre contact&eacute; par mail pour la suite</H1>";
-                //TODO envoyer un mail
-                
+                //sinon afficher a nouveau le formulaire avec les erreurs
+                printForm($_POST);
+                foreach ($error_array as $i => $value) 
+            	{
+            	    echo $value."<BR />";
+                }
             }
-            echo "L'&eacute;quipe technique du site web folkfestivalmarsinne.be    ";
-            
+            $dbh = null;
         }
-        else
+	    catch(PDOException $err)
         {
-            //sinon afficher a nouveau le formulaire avec les erreurs
-            ?>
-            <form method="POST" action="./index.php">
-            	    <table BORDER=0>
-            	    	<tr><td>Nom : </td>                        <td><INPUT type="text" name="nom" value="<?php echo $_POST['nom']; ?>"></td></tr>
-            	    	<tr><td>Prenom : </td>                     <td><INPUT type="text" name="prenom" value="<?php echo $_POST['prenom']; ?>"></td></tr>
-            	    	<tr><td>Adresse mail : </td>               <td><INPUT type="text" name="mail" value="<?php echo $_POST['mail']; ?>"></td></tr>
-            	    	<tr><td>GSM : </td>                        <td><INPUT type="text" name="gsm" value="<?php echo $_POST['gsm']; ?>"></td></tr>
-            	    	<tr><td>B&eacute;n&eacute;vole de secours : </td> <td><INPUT type="checkbox" name="secour" <?php if($secour){echo "checked";} ?>></td></tr>
-            	    	<tr><td>Nom d'utilisateur : </td>          <td><INPUT type="text" name="username" value="<?php echo $_POST['username']; ?>"></td></tr>
-            	    	<tr><td>Mot de passe : </td>               <td><INPUT type="password" name="password1"></td></tr>
-            	    	<tr><td>Mot de passe (2) : </td>               <td><INPUT type="password" name="password2"></td></tr>
-            	    	<tr><td></td><td></td></tr>
-            	    	<tr><td></td>                              <td><br /><INPUT type="submit" value="Inscription"></td></tr>
-            	    </table>
-            	</form>
-            <?php
-            foreach ($error_array as $i => $value) 
-        	{
-        	    echo $value."<BR />";
+            if($DEBUG)
+            {
+                echo "Erreur: ".$err;
             }
+
+            echo "<BR/>Il semblerait qu'un probleme avec la base de donn&eacute;es ait eu lieu.  Si le probl&egrave;me persiste, contactez l'administrateur du site: webmaster@folkfestivalmarsinne.be";
         }
 	}
 	else
 	{
-	?>
-	<form method="POST" action="./index.php">
-	    <table BORDER=0>
-	    	<tr><td>Nom : </td>                        <td><INPUT type="text" name="nom"></td></tr>
-	    	<tr><td>Prenom : </td>                     <td><INPUT type="text" name="prenom"></td></tr>
-	    	<tr><td>Adresse mail : </td>               <td><INPUT type="text" name="mail"></td></tr>
-	    	<tr><td>GSM : </td>                        <td><INPUT type="text" name="gsm"></td></tr>
-	    	<tr><td>B&eacute;n&eacute;vole de secour : </td> <td><INPUT type="checkbox" name="secour"></td></tr>
-	    	<tr><td>Nom d'utilisateur : </td>          <td><INPUT type="text" name="username"></td></tr>
-	    	<tr><td>Mot de passe : </td>               <td><INPUT type="password" name="password1"></td></tr>
-	    	<tr><td>Mot de passe (2) : </td>               <td><INPUT type="password" name="password2"></td></tr>
-	    	<tr><td></td><td></td></tr>
-	    	<tr><td></td>                              <td><br /><INPUT type="submit" value="Inscription"></td></tr>
-	    </table>
-	</form>
-	<?php } 
-	
-	
-	$dbh = null;
+	    printForm();
+	} 
 	?>
 
 </body></html>

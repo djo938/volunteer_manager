@@ -294,12 +294,12 @@ function recordData($dbh, &$error_list,$timeslot_id_array)
         {
             if($first)
             {
-                $param_value = "(:param".($i+1).", :user".($i+1).")";
+                $param_value = "(:param".($i+1).", :user".($i+1).", NOW())";
                 $first = false;
             }
             else
             {
-                $param_value .= ",(:param".($i+1).", :user".($i+1).")";
+                $param_value .= ",(:param".($i+1).", :user".($i+1).", NOW())";
             }
         }
         
