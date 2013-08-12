@@ -14,22 +14,35 @@
             	    	<tr><td>Adresse postale (*) : </td>                             <td><INPUT type="text" name="postal" <?php if(array_key_exists('postal',$data)){echo "value=\"".$_POST['postal']."\"";} ?>></td></tr>
             	    	<tr><td>Adresse email (*) : </td>                               <td><INPUT type="text" name="mail" <?php if(array_key_exists('mail',$data)){echo "value=\"".$_POST['mail']."\"";} ?>></td></tr>
             	    	<tr><td>GSM (*) : </td>                                         <td><INPUT type="text" name="gsm" <?php if(array_key_exists('gsm',$data)){echo "value=\"".$_POST['gsm']."\"";} ?>></td></tr>
-            	    	<tr><td>T&eacute;l&eacute;phone fix : </td>                     <td><INPUT type="text" name="fix" <?php if(array_key_exists('fix',$data)){echo "value=\"".$_POST['fix']."\"";} ?>></td></tr>
+            	    	<tr><td>T&eacute;l&eacute;phone fixe : </td>                    <td><INPUT type="text" name="fix" <?php if(array_key_exists('fix',$data)){echo "value=\"".$_POST['fix']."\"";} ?>></td></tr>
             	    	<tr><td>B&eacute;n&eacute;vole de secours : </td>               <td><INPUT type="checkbox" name="secour" <?php if(array_key_exists('secour',$data)){echo "checked";} ?>></td></tr>
             	    	<tr><td>Nom d'utilisateur (*) : </td>                           <td><INPUT type="text" name="username" <?php if(array_key_exists('username',$data)){echo "value=\"".$_POST['username']."\"";} ?>></td></tr>
             	    	<tr><td>Brevet de secourisme (ou &eacute;quivalent) : </td>     <td><INPUT type="text" name="mede" <?php if(array_key_exists('mede',$data)){echo "value=\"".$_POST['mede']."\"";} ?>></td></tr>
             	    	<tr><td>Mot de passe (*) : </td>                                <td><INPUT type="password" name="password1"></td></tr>
             	    	<tr><td>Mot de passe (2) (*) : </td>                            <td><INPUT type="password" name="password2"></td></tr>
             	    	<tr><td>Permis et voiture : </td>                               <td>non<INPUT type=radio name="car" value="non" <?php if(!array_key_exists('car',$data) || ($data['car'] != "licence" && $data['car'] != "car")){echo "checked";} ?>>, juste le permis B<INPUT type=radio name="car" value="licence" <?php if(array_key_exists('car',$data) && $data['car'] == "licence"){echo "checked";} ?>>, voiture et permis B<INPUT type=radio name="car" value="car" <?php if(array_key_exists('car',$data) && $data['car'] == "car"){echo "checked";} ?>></td></tr>
+            	    	<tr><td>Conditions d'utilisation : </td>                        <td><INPUT type="checkbox" name="condu" <?php if(array_key_exists('condu',$data)){echo "checked";} ?>> J'ai lu et j'accepte les conditons d'utilisation d&eacute;crites ci-dessous</td></tr>
             	    	<tr><td></td><td></td></tr>
-            	    	<tr><td COLSPAN="2"><img id="captcha" src="/securimage/securimage_show.php" alt="CAPTCHA Image" /></td></tr>
-            	    	<tr><td COLSPAN="2">	<input type="text" name="captcha_code" size="10" maxlength="6" /> <a href="#" onclick="document.getElementById('captcha').src = '/securimage/securimage_show.php?' + Math.random(); return false">[ Different Image ]</a></td></tr>
+            	    	<tr><td COLSPAN="2"><img id="captcha" src="./securimage/securimage_show.php" alt="CAPTCHA Image" /></td></tr>
+            	    	<tr><td COLSPAN="2">	<input type="text" name="captcha_code" size="10" maxlength="6" /> <a href="#" onclick="document.getElementById('captcha').src = './securimage/securimage_show.php?' + Math.random(); return false">[ Different Image ]</a></td></tr>
             	    	<tr><td></td><td></td></tr>
-            	    	<tr><td COLSPAN="2">(*) = champs obligatoire</td></tr>
+            	    	<tr><td COLSPAN="2">(*) = champ obligatoire</td></tr>
             	    	<tr><td></td>                              <td><br /><INPUT type="submit" value="Inscription"></td></tr>
             	    </table>
             	</form>
     	<?php
+    }
+    
+    function printCond()
+    {
+        ?>
+        	<h3>Conditions d'utilisation</h3>
+        	Les donn&eacute;es personnelles recueillies dans ce formulaire seront collect&eacute;es et trait&eacute;es conform&eacute;ment &agrave; la r&eacute;glementation en vigueur, en particulier la loi du 8 d&eacute;cembre 1992 sur la protection de la vie priv&eacute;e.<BR />
+            Ces donn&eacute;es personnelles ne sont trait&eacute;es que dans la mesure strictement n&eacute;cessaire &agrave; la gestion des activit&eacute;s b&eacute;n&eacute;voles dans le cadre du Folk Festival Marsinne (constitution d'une r&eacute;serve de candidats invit&eacute;s &agrave; participer en qualit&eacute; de volontaires au Folk Festival Marsinne. Identification/authentification des b&eacute;n&eacute;voles ; r&eacute;partition des t&acirc;ches ; attributions des postes ; communication des horaires et instructions de travail).<BR />
+            Ces donn&eacute;es sont trait&eacute;es sous la responsabilit&eacute; du responsable des b&eacute;n&eacute;voles et du responsable informatique du Folk Festival Marsinne. Elles ne seront pas communiqu&eacute;es &agrave; des tiers ni utilis&eacute;es &agrave; des fins commerciales. <BR />
+            A tout moment, vous conservez le droit d'acc&eacute;der &agrave; vos donn&eacute;es personnelles et de les rectifier si n&eacute;cessaire. Pour ce faire, vous pouvez envoyer un email &agrave; <a href="mailto:webmaster@folkfestivalmarsinne.be">webmaster@folkfestivalmarsinne.be</a>. De m&ecirc;me, vous demeurez &agrave; tout moment libre de supprimer vos donn&eacute;es personnelles, toujours en envoyant un mail &agrave; <a href="mailto:webmaster@folkfestivalmarsinne.be">webmaster@folkfestivalmarsinne.be</a>. <BR />
+            En compl&eacute;tant votre fiche d'inscription, vous vous d&eacute;clarez d'accord avec le traitement de vos donn&eacute;es personnelles dans les conditions d&eacute;crites ci-dessus. <BR />
+        <?php
     }
     
     function startswith($hay, $needle) {
@@ -55,6 +68,11 @@
         {
             $error_array['captcha'] = "Le captcha est incorrect";
         }
+	    
+	    if(!isset($_POST['condu']))
+	    {
+	        $error_array['condu'] = "Pour s'inscrire, vous devez accepter les conditions d'utilisation";
+	    }
 	    
 		if(isset($_POST['secour']))
 		{$secour = true;}
@@ -218,10 +236,14 @@
             {
                 //sinon afficher a nouveau le formulaire avec les erreurs
                 printForm($_POST);
+                echo "<h3>Erreur(s)</h3><ul>";
                 foreach ($error_array as $i => $value) 
             	{
-            	    echo $value."<BR />";
+            	    echo "<li />".$value;
                 }
+                echo "</ul>";
+                printCond();
+                
             }
             $dbh = null;
         }
@@ -238,6 +260,7 @@
 	else
 	{
 	    printForm();
+	    printCond();
 	} 
 	?>
 
