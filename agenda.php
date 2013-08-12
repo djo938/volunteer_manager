@@ -267,14 +267,14 @@ function checkCondition($dbh,&$error_list,$allSlot, $type = "pre")
                                             ksort($slot_list);
                                             
                                             //check consecutive
-                                            $count = 0;
+                                            $count = 1;
                                             $previous_end_date = "2000-01-01 03:00:00";
                                             $erreur_found = false;
                                             $start = true;
                                             
                                             foreach($slot_list as $kstart => $slot)
                                             {
-                                                if($slot["Start_time"] = $previous_end_date){$count +=1;}
+                                                if($slot["Start_time"] == $previous_end_date){$count +=1;}
                                                 else
                                                 {
                                                     if(! $start)
@@ -286,7 +286,7 @@ function checkCondition($dbh,&$error_list,$allSlot, $type = "pre")
                                                         }
                                                     }
                                                     $start = false;
-                                                    $count = 0;
+                                                    $count = 1;
                                                 }
                                                 
                                                 $previous_end_date = $slot["End_time"];
@@ -314,13 +314,13 @@ function checkCondition($dbh,&$error_list,$allSlot, $type = "pre")
                                         ksort($slot_list);
                                         
                                         //check consecutive
-                                        $count = 0;
+                                        $count = 1;
                                         $previous_end_date = "2000-01-01 03:00:00";
                                         $erreur_found = false;
                                         foreach($slot_list as $start => $slot)
-                                        {
-                                            if($slot["Start_time"] = $previous_end_date){$count +=1;}
-                                            else                                        {$count = 0;}
+                                        {                                            
+                                            if($slot["Start_time"] == $previous_end_date){$count +=1;}
+                                            else                                        {$count = 1;}
                                             
                                             if($count > $limit)
                                             {
@@ -453,6 +453,10 @@ function checkCondition($dbh,&$error_list,$allSlot, $type = "pre")
                     {                        
                         $function_list [] = function ($slot, &$error_list, &$accumulator) use ($to_check, $key, $target_type) 
                                                    {
+                                                       //TODO corriger ce sale hack !!!!!!!!!
+                                                            //ça ne comptabilise pas le montage pour ne pas entrer en conflit avec la regle demontage VS weekend...
+                                                       if($slot["Description"] == "Montage"){return true;}
+                                                       
                                                        //if(!checker($slot,$to_check)){return true;}
                                                        //TODO check if keys exists
                                                        $accumulator[$key][$slot[$target_type]] = true;
@@ -567,7 +571,7 @@ function sortData(&$error_list,$db_data, $timeslot_id_array)
             $start_day->sub(new DateInterval("P1D"));
 
             //ajout de l'ensemble du jour dans la liste des jours
-            $sorted_data[$start_day->format("l d F")] = &$current_day;
+            $sorted_data[formatFrench($start_day->format("l d F"))] = &$current_day;
 
             //application de la nouvelle limite
             $next_limit = $new_next_limit->format("Y-m-d H:i:s");
@@ -950,7 +954,7 @@ function printUserSlot($user_slot)
             $day_date = fromMySQLDatetimeToPHPDatetime($limit_day);
             
             $day_date->sub(new DateInterval("P1D"));
-            echo $day_date->format("l d F")."<BR />";
+            echo formatFrench($day_date->format("l d F"))."<BR />";
         }
         
         echo "&nbsp;&nbsp;&nbsp;".getSlotDescriptionFromDBSlot($value)."<BR />";

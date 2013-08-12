@@ -15,11 +15,11 @@
             	    	<tr><td>Adresse email (*) : </td>                               <td><INPUT type="text" name="mail" <?php if(array_key_exists('mail',$data)){echo "value=\"".$_POST['mail']."\"";} ?>></td></tr>
             	    	<tr><td>GSM (*) : </td>                                         <td><INPUT type="text" name="gsm" <?php if(array_key_exists('gsm',$data)){echo "value=\"".$_POST['gsm']."\"";} ?>></td></tr>
             	    	<tr><td>T&eacute;l&eacute;phone fixe : </td>                    <td><INPUT type="text" name="fix" <?php if(array_key_exists('fix',$data)){echo "value=\"".$_POST['fix']."\"";} ?>></td></tr>
-            	    	<tr><td>B&eacute;n&eacute;vole de secours : </td>               <td><INPUT type="checkbox" name="secour" <?php if(array_key_exists('secour',$data)){echo "checked";} ?>></td></tr>
+            	    	<tr><td>B&eacute;n&eacute;vole de secours (1) : </td>               <td><INPUT type="checkbox" name="secour" <?php if(array_key_exists('secour',$data)){echo "checked";} ?>></td></tr>
             	    	<tr><td>Nom d'utilisateur (*) : </td>                           <td><INPUT type="text" name="username" <?php if(array_key_exists('username',$data)){echo "value=\"".$_POST['username']."\"";} ?>></td></tr>
             	    	<tr><td>Brevet de secourisme (ou &eacute;quivalent) : </td>     <td><INPUT type="text" name="mede" <?php if(array_key_exists('mede',$data)){echo "value=\"".$_POST['mede']."\"";} ?>></td></tr>
             	    	<tr><td>Mot de passe (*) : </td>                                <td><INPUT type="password" name="password1"></td></tr>
-            	    	<tr><td>Mot de passe (2) (*) : </td>                            <td><INPUT type="password" name="password2"></td></tr>
+            	    	<tr><td>Mot de passe (bis) (*) : </td>                            <td><INPUT type="password" name="password2"></td></tr>
             	    	<tr><td>Permis et voiture : </td>                               <td>non<INPUT type=radio name="car" value="non" <?php if(!array_key_exists('car',$data) || ($data['car'] != "licence" && $data['car'] != "car")){echo "checked";} ?>>, juste le permis B<INPUT type=radio name="car" value="licence" <?php if(array_key_exists('car',$data) && $data['car'] == "licence"){echo "checked";} ?>>, voiture et permis B<INPUT type=radio name="car" value="car" <?php if(array_key_exists('car',$data) && $data['car'] == "car"){echo "checked";} ?>></td></tr>
             	    	<tr><td>Conditions d'utilisation : </td>                        <td><INPUT type="checkbox" name="condu" <?php if(array_key_exists('condu',$data)){echo "checked";} ?>> J'ai lu et j'accepte les conditons d'utilisation d&eacute;crites ci-dessous</td></tr>
             	    	<tr><td></td><td></td></tr>
@@ -30,6 +30,7 @@
             	    	<tr><td></td>                              <td><br /><INPUT type="submit" value="Inscription"></td></tr>
             	    </table>
             	</form>
+            	(1) : Il peut arriver que certains b&eacute;n&eacute;voles ne se pr&eacute;sentent pas &agrave; leur poste &agrave; temps, il faut donc que certains b&eacute;n&eacute;voles soient accessibles au pied lev&eacute;. Si vous faites partie de l'&eacute;quipe des b&eacute;n&eacute;voles de secours, je pourrai vous contacter par gsm ou verbalement pour vous proposer de remplacer le b&eacute;n&eacute;vole absent. Si vous acceptez, vous recevrez des tickets boissons comme si vous aviez prest&eacute; cette tranche horaire. Notez que vous pouvez refuser de remplacer le b&eacute;n&eacute;vole absent.
     	<?php
     }
     
