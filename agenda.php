@@ -888,7 +888,7 @@ function printForm($sorted_data, $timeslot_id_array)
     
     echo "Nombre minimal de plages horaires pour valider un planning de b&eacute;n&eacute;vole : ".$AGENDA_MIN_SLOT."<BR />"
     ."Nombre maximale de plages horaires pour valider un planning de b&eacute;n&eacute;vole : ".$AGENDA_MAX_SLOT."<BR /><BR />"
-    ."<form METHOD=\"POST\" ACTION=\"agenda.php\"><INPUT type=\"submit\" name=\"Test\" value=\"Test\">
+    ."<form METHOD=\"POST\" ACTION=\"agenda.php\"><INPUT type=\"submit\" name=\"Test\" value=\"V&eacute;rifier les donn&eacute;es avant d'envoyer\">
     <INPUT type=\"submit\" name=\"Envoyer\" value=\"Envoyer\">";
 
     foreach( $sorted_data as $key=>$current_day)
@@ -934,7 +934,7 @@ function printForm($sorted_data, $timeslot_id_array)
         echo "</table>";
     }
     ?>
-    <BR/><INPUT type="submit" name="Test" value="Test">
+    <BR/><INPUT type="submit" name="Test" value="V&eacute;rifier les donn&eacute;es avant d'envoyer">
     <INPUT type="submit" name="Envoyer" value="Envoyer">
 
     </form>

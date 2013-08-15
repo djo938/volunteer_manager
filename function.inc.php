@@ -77,18 +77,44 @@ function buildSQLParam($array_size)
 
 function compute_bonus($dbh, $slot_list)
 {
-    //echo 'BONUS <BR />';
-    
-    //var_dump($slot_list);
-    
-    //$value_to_print = array();
     if(count($slot_list) > 0)
     {
+        //TODO remove this hack
+        $montage_demontage_count = 0;
+        $weekend_slot = 0;
+        foreach($slot_list as $index=>$slot)
+        {
+            if($slot["Description"] == "Montage" || $slot["Description"] == "D&eacute;montage")
+            {
+                $montage_demontage_count += 1;
+                continue;
+            }
+            
+            if($slot["Start_time"] > "2013-09-06 03:00:00" && $slot["Start_time"] <= "2013-09-09 03:00:00")
+            {
+                $weekend_slot += 1;
+            }
+        }
+        
+        //if 5 plages of montage/demontage OR if 6 plages from friday to sunday
+        if($montage_demontage_count >= 5 || $weekend_slot >= 6)
+        {
+            //entrée 3 jours, 5 repas, 15 boissons offertes + Café et eau gratuits
+            $to_return = array();
+            $to_return [] = array("Description" => "entr&eacute;e d'un jour au choix",0 => "entr&eacute;e d'un jour au choix", "sum" => "3", 1 => "3");
+            //$to_return [] = array("Description" => "caf&eacute; + eau gratuits le vendredi",0 => "caf&eacute; + eau gratuits le vendredi", "sum" => "1", 1 => "1");
+            //$to_return [] = array("Description" => "entr&eacute;e samedi ou dimanche au choix",0 => "entr&eacute;e samedi ou dimanche au choix", "sum" => "2", 1 => "2");
+            $to_return [] = array("Description" => "caf&eacute; + eau gratuits le jour de la place gratuite",0 => "caf&eacute; + eau gratuits le jour de la place gratuite", "sum" => "3", 1 => "3");
+            $to_return [] = array("Description" => "un repas",0 => "un repas", "sum" => "5", 1 => "5");
+            $to_return [] = array("Description" => "une boisson",0 => "une boisson", "sum" => "15", 1 => "15");
+            return $to_return;
+        }
+        //XXX end of the hack  
+
         $bonus_to_load = array();
     
         $first = true;
         $req_part = "";
-        //$i = 1;
         
         foreach($slot_list as $index=>$value)
         {
@@ -101,48 +127,6 @@ function compute_bonus($dbh, $slot_list)
                 $bonus_to_load[intval($value["Bonus_cat"])] = 1;
             }
         }
-        /*foreach($slot_list as $index=>$value)
-        {
-            //si la plage n'est pas disponible, on ne la comptabilise plus
-            /*if($value["remaining"] == 0)
-            {
-                continue;
-            } XXX $slot_list est dejq epure/
-            
-            if(array_key_exists($value["Bonus_cat"],$bonus_to_load))
-            {
-                $bonus_to_load[intval($value["Bonus_cat"])] += 1;
-            }
-            else
-            {
-                $bonus_to_load[intval($value["Bonus_cat"])] = 1;
-            
-                if($first)
-                {
-                    //$req_part = "(cat = :cat".$i." AND threshold <= :threshold".$i.")";
-                    //$req_part = "(cat = ".$value["Bonus_cat"]." AND threshold <= :threshold".$value["Bonus_cat"].")";
-                    $req_part = "Bonus_items_bonus.ID_Bonus = (SELECT ID_Bonus 
-                                        				  	   FROM Bonus B
-                                        					   WHERE B.cat = ".$value["Bonus_cat"]." AND B.threshold = (SELECT max(Bonus.threshold)
-                                        												   	      FROM Bonus 
-                                        													      WHERE cat = B.cat AND threshold <= :threshold".$value["Bonus_cat"]." 
-                                        													      GROUP BY Bonus.cat))";
-                    $first = false;
-                }
-                else
-                {
-                    //$req_part .= " OR (cat = :cat".$i." AND threshold <= :threshold".$i.")";
-                    //$req_part .= " OR (cat = ".$value["Bonus_cat"]." AND threshold <= :threshold".$value["Bonus_cat"].")";
-                    $req_part .= " OR Bonus_items_bonus.ID_Bonus = (SELECT ID_Bonus 
-                                        				  	   FROM Bonus B
-                                        					   WHERE B.cat = ".$value["Bonus_cat"]." AND B.threshold = (SELECT max(Bonus.threshold)
-                                        												   	      FROM Bonus 
-                                        													      WHERE cat = B.cat AND threshold <= :threshold".$value["Bonus_cat"]." 
-                                        													      GROUP BY Bonus.cat))";
-                }
-                //$i += 1;
-            }
-        }*/
     
         foreach($bonus_to_load as $cat=>$count)
         {
@@ -173,39 +157,12 @@ function compute_bonus($dbh, $slot_list)
                 AND (".$req_part.")
                 GROUP BY Bonus_items.ID_Bonus_item";
     
-        /*$SQL = "SELECT description, max(threshold) 
-                FROM Bonus 
-                WHERE ".$req_part." 
-                GROUP BY cat";*/
-        //$SQL = "SELECT description, max(threshold) FROM Bonus WHERE (cat = 1 AND threshold <= 1) OR (cat = 2 AND threshold <= 2) GROUP BY cat";
-        //echo $SQL."<BR />";
-        $stmt = $dbh->prepare($SQL);
-    
-        //$i = 1;
-        //var_dump($bonus_to_load);
-        /*foreach($bonus_to_load as $key=>$value)
-        {
-            //echo gettype($key)." ".gettype($value)."<BR />";
-            //$stmt->bindParam(":cat".$i,$key,PDO::PARAM_INT);
-            $stmt->bindParam(":threshold".$key,$value,PDO::PARAM_INT);
-            print "BIND :threshold".$key." VALUE ".$value." <BR />";
-            //$i += 1;
-        }*/
-    
+        $stmt = $dbh->prepare($SQL);    
         $stmt->execute();
-        //echo '<BR /><BR />';
-        //$stmt->debugDumpParams();
-        //echo '<BR /><BR />';
         $a = $stmt->fetchAll();
-    
-        //echo "<BR /><BR />";
-        //var_dump($a);
-    
-        /*foreach($a as $index=>$value)
-        {
-            $value_to_print[] = $value["sum"]." fois : ".$value["Description"];
-        }*/
         
+        //var_dump($a);
+              
         return $a;
     }
     return array();

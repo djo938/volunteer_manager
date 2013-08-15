@@ -13,24 +13,69 @@
             	    	<tr><td>Prenom (*) : </td>                                      <td><INPUT type="text" name="prenom" <?php if(array_key_exists('prenom',$data)){echo "value=\"".$_POST['prenom']."\"";} ?>></td></tr>
             	    	<tr><td>Adresse postale (*) : </td>                             <td><INPUT type="text" name="postal" <?php if(array_key_exists('postal',$data)){echo "value=\"".$_POST['postal']."\"";} ?>></td></tr>
             	    	<tr><td>Adresse email (*) : </td>                               <td><INPUT type="text" name="mail" <?php if(array_key_exists('mail',$data)){echo "value=\"".$_POST['mail']."\"";} ?>></td></tr>
+            	    	<tr><td>Date de naissance (*) : </td>                               <td><?php
+            	    	
+            	    	echo "<SELECT name=\"date_day\">";
+                        for($i=1;$i<32;$i++)
+                        {
+                                if(array_key_exists('date_day',$data) && $data["date_day"] == $i)
+                                {
+                                    echo "<OPTION VALUE=\"".$i."\" SELECTED>".$i."</OPTION>";
+                                }
+                                else
+                                {
+                                    echo "<OPTION VALUE=\"".$i."\">".$i."</OPTION>";
+                                }
+                        }
+                        echo "</SELECT>";
+                        $french_months = array(1=>'Janvier', 2=>'F&eacute;vrier', 3=>'Mars', 4=>'Avril', 5=>'Mai', 6=>'Juin', 7=>'Juillet', 8=>'Ao&ucirc;t', 9=>'Septembre', 10=>'Octobre', 11=>'Novembre', 12=>'D&eacute;cembre');
+                        echo "<SELECT name=\"date_month\">";
+                        for($i=1;$i<13;$i++)
+                        {
+                                if(array_key_exists('date_month',$data) && $data["date_month"] == $i)
+                                {
+                                    echo "<OPTION VALUE=\"".$i."\" SELECTED>".$french_months[$i]."</OPTION>";
+                                }
+                                else
+                                {
+                                    echo "<OPTION VALUE=\"".$i."\">".$french_months[$i]."</OPTION>";
+                                }
+                        }
+                        echo "</SELECT>";
+                        echo "<SELECT name=\"date_year\">";
+                        for($i=1970;$i<2010;$i++)
+                        {
+                                if(array_key_exists('date_year',$data) && $data["date_year"] == $i)
+                                {
+                                    echo "<OPTION VALUE=\"".$i."\" SELECTED>".$i."</OPTION>";
+                                }
+                                else
+                                {
+                                    echo "<OPTION VALUE=\"".$i."\">".$i."</OPTION>";
+                                }
+                        }
+                        echo "</SELECT>";
+            	    	
+            	    	?></td></tr>
             	    	<tr><td>GSM (*) : </td>                                         <td><INPUT type="text" name="gsm" <?php if(array_key_exists('gsm',$data)){echo "value=\"".$_POST['gsm']."\"";} ?>></td></tr>
             	    	<tr><td>T&eacute;l&eacute;phone fixe : </td>                    <td><INPUT type="text" name="fix" <?php if(array_key_exists('fix',$data)){echo "value=\"".$_POST['fix']."\"";} ?>></td></tr>
-            	    	<tr><td>B&eacute;n&eacute;vole de secours (1) : </td>               <td><INPUT type="checkbox" name="secour" <?php if(array_key_exists('secour',$data)){echo "checked";} ?>></td></tr>
+            	    	<tr><td>B&eacute;n&eacute;vole de secours (1) : </td>           <td><INPUT type="checkbox" name="secour" <?php if(array_key_exists('secour',$data)){echo "checked";} ?>></td></tr>
             	    	<tr><td>Nom d'utilisateur (*) : </td>                           <td><INPUT type="text" name="username" <?php if(array_key_exists('username',$data)){echo "value=\"".$_POST['username']."\"";} ?>></td></tr>
             	    	<tr><td>Brevet de secourisme (ou &eacute;quivalent) : </td>     <td><INPUT type="text" name="mede" <?php if(array_key_exists('mede',$data)){echo "value=\"".$_POST['mede']."\"";} ?>></td></tr>
             	    	<tr><td>Mot de passe (*) : </td>                                <td><INPUT type="password" name="password1"></td></tr>
-            	    	<tr><td>Mot de passe (bis) (*) : </td>                            <td><INPUT type="password" name="password2"></td></tr>
+            	    	<tr><td>Mot de passe (bis) (*) : </td>                          <td><INPUT type="password" name="password2"></td></tr>
+        	    	    <tr><td>Bar : </td>                                             <td><INPUT type="checkbox" name="bar" <?php if(array_key_exists('bar',$data)){echo "checked";} ?>> J'ai l'habitude de servir au bar, j'ai d&eacute;j&agrave; chang&eacute; un f&ucirc;t, etc.</td></tr>
             	    	<tr><td>Permis et voiture : </td>                               <td>non<INPUT type=radio name="car" value="non" <?php if(!array_key_exists('car',$data) || ($data['car'] != "licence" && $data['car'] != "car")){echo "checked";} ?>>, juste le permis B<INPUT type=radio name="car" value="licence" <?php if(array_key_exists('car',$data) && $data['car'] == "licence"){echo "checked";} ?>>, voiture et permis B<INPUT type=radio name="car" value="car" <?php if(array_key_exists('car',$data) && $data['car'] == "car"){echo "checked";} ?>></td></tr>
             	    	<tr><td>Conditions d'utilisation : </td>                        <td><INPUT type="checkbox" name="condu" <?php if(array_key_exists('condu',$data)){echo "checked";} ?>> J'ai lu et j'accepte les conditons d'utilisation d&eacute;crites ci-dessous</td></tr>
             	    	<tr><td></td><td></td></tr>
             	    	<tr><td COLSPAN="2"><img id="captcha" src="./securimage/securimage_show.php" alt="CAPTCHA Image" /></td></tr>
             	    	<tr><td COLSPAN="2">	<input type="text" name="captcha_code" size="10" maxlength="6" /> <a href="#" onclick="document.getElementById('captcha').src = './securimage/securimage_show.php?' + Math.random(); return false">[ Different Image ]</a></td></tr>
             	    	<tr><td></td><td></td></tr>
-            	    	<tr><td COLSPAN="2">(*) = champ obligatoire</td></tr>
             	    	<tr><td></td>                              <td><br /><INPUT type="submit" value="Inscription"></td></tr>
             	    </table>
             	</form>
-            	(1) : Il peut arriver que certains b&eacute;n&eacute;voles ne se pr&eacute;sentent pas &agrave; leur poste &agrave; temps, il faut donc que certains b&eacute;n&eacute;voles soient accessibles au pied lev&eacute;. Si vous faites partie de l'&eacute;quipe des b&eacute;n&eacute;voles de secours, je pourrai vous contacter par gsm ou verbalement pour vous proposer de remplacer le b&eacute;n&eacute;vole absent. Si vous acceptez, vous recevrez des tickets boissons comme si vous aviez prest&eacute; cette tranche horaire. Notez que vous pouvez refuser de remplacer le b&eacute;n&eacute;vole absent.
+            	<small>(*) : champ obligatoire</small><BR /><BR />
+            	<small>(1) : Il peut arriver que certains b&eacute;n&eacute;voles ne se pr&eacute;sentent pas &agrave; leur poste &agrave; temps, il faut donc que certains b&eacute;n&eacute;voles soient accessibles au pied lev&eacute;. Si vous faites partie de l'&eacute;quipe des b&eacute;n&eacute;voles de secours, je pourrai vous contacter par gsm ou verbalement pour vous proposer de remplacer le b&eacute;n&eacute;vole absent. Si vous acceptez, vous recevrez des tickets boissons comme si vous aviez prest&eacute; cette tranche horaire. Notez que vous pouvez refuser de remplacer le b&eacute;n&eacute;vole absent.</small>
     	<?php
     }
     
@@ -57,7 +102,11 @@
 	   && array_key_exists('gsm',$_POST) 
 	   && array_key_exists('username',$_POST) 
 	   && array_key_exists('password1',$_POST) 
-	   && array_key_exists('password2', $_POST))
+	   && array_key_exists('password2', $_POST)
+	   && array_key_exists('car', $_POST)
+	   && array_key_exists('date_day', $_POST)
+	   && array_key_exists('date_month', $_POST)
+	   && array_key_exists('date_year', $_POST))
 	{
 	    $error_array = array();
 	    
@@ -75,10 +124,20 @@
 	        $error_array['condu'] = "Pour s'inscrire, vous devez accepter les conditions d'utilisation";
 	    }
 	    
+	    if($_POST["car"] != "non" && $_POST["car"] != "car" && $_POST["car"] != "licence")
+	    {
+	        $error_array['car'] = "Valeur voiture invalide";
+	    }    	
+	    
 		if(isset($_POST['secour']))
 		{$secour = true;}
 		else
 		{$secour = false;}
+		
+		if(isset($_POST['secour']))
+		{$bar = true;}
+		else
+		{$bar = false;}
 
         if(array_key_exists('fix',$_POST) )
         {$fix = $_POST["fix"];}
@@ -203,11 +262,17 @@
         		}
             }
         
+            //TODO check date
+            if(!checkdate($_POST["date_month"], $_POST["date_day"], $_POST["date_year"]))
+            {
+                $error_array['date'] = "la date de naissance est invalide";
+            }
+        
             if(count($error_array) == 0)
             {            
                 //si pas d'erreur, ajouter l'utilisateur
-                $stmt = $dbh->prepare("INSERT INTO Users(Name,  Family_name, Mail,  GSM,  backup,  username, password, user_type, register_date, postal, fix,  medecine) 
-                                                  VALUES(:name, :fname,      :mail, :gsm, :backup, :uname,   :pwd,     'new',     NOW(),        :postal, :fix, :mede)");
+                $stmt = $dbh->prepare("INSERT INTO Users(Name,  Family_name, Mail,  GSM,  backup,  username, password, user_type, register_date, postal, fix,  medecine, bar, car, birthdate) 
+                                                  VALUES(:name, :fname,      :mail, :gsm, :backup, :uname,   :pwd,     'new',     NOW(),        :postal, :fix, :mede, :bar, :car, :birthdate)");
                 $stmt->bindParam(':name', $_POST['nom'], PDO::PARAM_STR, 300);
                 $stmt->bindParam(':fname', $_POST['prenom'], PDO::PARAM_STR, 300);
                 $stmt->bindParam(':mail', $_POST['mail'], PDO::PARAM_STR, 300);
@@ -219,7 +284,10 @@
                 $stmt->bindParam(':postal', $_POST['postal'], PDO::PARAM_STR, 300);
                 $stmt->bindParam(':fix', $fix, PDO::PARAM_STR, 30);
                 $stmt->bindParam(':mede', $mede, PDO::PARAM_STR, 300);
-            
+                $stmt->bindParam(':bar', $bar);
+                $stmt->bindParam(':car', $_POST["car"], PDO::PARAM_STR, 30);
+                $bdate = $_POST["date_year"]."-".$_POST["date_month"]."-".$_POST["date_day"];
+                $stmt->bindParam(':birthdate',$bdate);
             
                 if(!$stmt->execute())
                 {
