@@ -9,8 +9,8 @@
         ?>
             <form method="POST" action="./index.php">
             	    <table BORDER=0>
-            	    	<tr><td>Nom (*) : </td>                                         <td><INPUT type="text" name="nom" <?php if(array_key_exists('nom',$data)){echo "value=\"".$_POST['nom']."\"";} ?>></td></tr>
-            	    	<tr><td>Prenom (*) : </td>                                      <td><INPUT type="text" name="prenom" <?php if(array_key_exists('prenom',$data)){echo "value=\"".$_POST['prenom']."\"";} ?>></td></tr>
+        	    	    <tr><td>Prenom (*) : </td>                                      <td><INPUT type="text" name="prenom" <?php if(array_key_exists('prenom',$data)){echo "value=\"".$_POST['prenom']."\"";} ?>></td></tr>
+            	    	<tr><td>Nom de famille (*) : </td>                                         <td><INPUT type="text" name="nom" <?php if(array_key_exists('nom',$data)){echo "value=\"".$_POST['nom']."\"";} ?>></td></tr>
             	    	<tr><td>Adresse postale (*) : </td>                             <td><INPUT type="text" name="postal" <?php if(array_key_exists('postal',$data)){echo "value=\"".$_POST['postal']."\"";} ?>></td></tr>
             	    	<tr><td>Adresse email (*) : </td>                               <td><INPUT type="text" name="mail" <?php if(array_key_exists('mail',$data)){echo "value=\"".$_POST['mail']."\"";} ?>></td></tr>
             	    	<tr><td>Date de naissance (*) : </td>                               <td><?php
@@ -43,7 +43,7 @@
                         }
                         echo "</SELECT>";
                         echo "<SELECT name=\"date_year\">";
-                        for($i=1970;$i<2010;$i++)
+                        for($i=1930;$i<2010;$i++)
                         {
                                 if(array_key_exists('date_year',$data) && $data["date_year"] == $i)
                                 {

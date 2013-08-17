@@ -149,7 +149,7 @@ function buildSeveralPagePDF_v2($page_list)
          {
              $pdf->SetFont('Arial','B',14);
              $pdf->MultiCell(0,7,$title);
-             $pdf->SetFont('Arial','B',12);
+             $pdf->SetFont('Arial','',12);
              foreach($lines as $i=>$line)
              {
                  $pdf->MultiCell(0,7,$line);
@@ -214,11 +214,19 @@ function printVolunteerList($list, $title)
     $pdf->SetFont('Arial','B',16);
     $pdf->MultiCell(0,20,$title);
     
-    $pdf->SetFont('Arial','B',14);
+    //$pdf->SetFont('Arial','',14);
     
+    $fill = false;
+    $pdf->SetFillColor(224,235,255);
+    $pdf->SetTextColor(0);
+    $pdf->SetFont('Arial','',12);
     foreach($list as $k=>$v) //Name, Family_name,GSM  
     {
-        $pdf->MultiCell(0,10,$v["Name"]." ".$v["Family_name"]." : ".$v["GSM"]);
+        //$pdf->MultiCell(0,10,." : ".$v["GSM"]);
+        $pdf->Cell(120,7,$v["Family_name"]." ".$v["Name"],1,0,'L',$fill);//,'LR',0,'L',$fill);
+        $pdf->Cell(50,7,$v["GSM"],1,0,'L',$fill);
+        $pdf->Ln();
+        $fill =  !$fill;
     }
      
     $pdf->Output();
@@ -371,7 +379,8 @@ function getVolunteerList($dbh,$only_backup=false)
         {
             $sql_req .= " AND backup = 1";
         }
-                    
+        
+        $sql_req .= " ORDER BY Family_name";    
         $stmt = $dbh->prepare($sql_req);                                               
         $stmt->execute();
         
@@ -385,7 +394,8 @@ function getVolunteerListFromActivityName($dbh,$name)
                 WHERE Users.ID_Users = User_Timeslot.ID_Users
                 AND Timeslot.ID_Timeslot = User_Timeslot.ID_Timeslot
                 AND Timeslot.Description = :name
-                AND user_type = 'validated'";
+                AND user_type = 'validated'
+                GROUP BY Users.ID_Users";
                 
     $stmt = $dbh->prepare($sql_req);
     $stmt->bindParam(':name', $name);                       
@@ -426,7 +436,7 @@ function convertBonusList($list)
     $to_ret = array();
     foreach($list as $key=>$value)
     {
-        $to_ret [] = $value["sum"]." fois : ".$value["Description"];
+        $to_ret [] = $value["sum"]." fois : ".html_entity_decode($value["Description"]);
     }
     return $to_ret;
 }
@@ -839,7 +849,7 @@ try
 			echo"<a href=\"listing.php?doc=volunteer\" target=\"_blank\">Obtenir la liste de tous les utilisateur normaux</a><BR /><BR />";
 			
             //-planning d'un utilisateur / -bonus d'un utilisateur / -bonus/planning d'un utilisateur
-            echo "<form METHOD=\"POST\" ACTION=\"listing.php\"><select name=\"volunteer_id\">";
+            echo "<form METHOD=\"POST\" ACTION=\"listing.php\" TARGET=\"_blank\"><select name=\"volunteer_id\">";
             
             foreach($user_list as $k=>$v)
             {
@@ -848,7 +858,7 @@ try
             echo "</select><INPUT type=\"submit\" name=\"getbonus\" value=\"Obtenir la liste des bonus\"><INPUT type=\"submit\" name=\"getschedule\" value=\"Obtenir l'horaire\"><INPUT type=\"submit\" name=\"getschedulebonus\" value=\"Obtenir l'horaire/bonus\"></form>";
         
             //-horaire par activit&eacute; (grille avec le nom des gens) / -liste benevole par activit&eacute; (nom + num de gsm)
-            echo "<form METHOD=\"POST\" ACTION=\"listing.php\"><select name=\"activity_name\">";
+            echo "<form METHOD=\"POST\" ACTION=\"listing.php\" TARGET=\"_blank\"><select name=\"activity_name\">";
             
             foreach($activity_list as $k=>$v)
             {
