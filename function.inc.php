@@ -185,7 +185,7 @@ function getSlotStartDateFromDBSlot($value)
 {
     $datetime_start = fromMySQLDatetimeToPHPDatetime($value["Start_time"]);
     
-    return $datetime_start->format("l d F");
+    return formatFrench($datetime_start->format("l d F"));
 }
 
 ?>

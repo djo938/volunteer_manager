@@ -97,6 +97,20 @@ function getAllSlotCount($dbh)
     return 0;
 }
 
+function getValidatedUserWithoutSlotCount($dbh)
+{
+    $sql_req = "SELECT count(*) as ucount FROM Users WHERE `ID_Users` NOT IN (SELECT `ID_Users` FROM User_Timeslot) AND user_type = \"validated\"";
+    $stmt = $dbh->prepare($sql_req);                                               
+    $stmt->execute();
+    
+    if( ($var = $stmt->fetch()))
+    {
+        return $var["ucount"];
+    }
+    
+    return 0;
+}
+
 //////////////// PDF FUNCTION ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*function buildPDF($list)
@@ -137,6 +151,7 @@ function getAllSlotCount($dbh)
 
 function buildSeveralPagePDF_v2($page_list)
 {
+    //var_dump($page_list);
     $pdf = new FPDF();
     
     foreach($page_list as $main_title=>$title_list)
@@ -164,16 +179,55 @@ function buildSeveralPagePDF_v2($page_list)
 function FancyTable($pdf,$header, $data)
 {
     // Couleurs, épaisseur du trait et police grasse
-    $pdf->SetFillColor(255,0,0);
-    $pdf->SetTextColor(255);
+
     $pdf->SetDrawColor(128,0,0);
     $pdf->SetLineWidth(.3);
+    
+    $pdf->SetFillColor(255,0,0);
+    $pdf->SetTextColor(255);
     $pdf->SetFont('Arial','B',7);
     // En-tête
-    $w = array(30, 22, 38, 46, 55, 16, 18, 32);
-    for($i=0;$i<count($w);$i++)
-        $pdf->Cell($w[$i],7,$header[$i],1,0,'C',true);
-    $pdf->Ln();
+    $header_max_length = 25;
+    $cell_size = 35;
+    $w               = array(65, 29, 29, 29, 29, 29, 29, 29);
+    $text_size_array = array(25, 22, 22, 22, 22, 22, 22, 22);
+    $offset_array    = array( 0,  0,  0,  0,  0,  0,  0,  0);
+    
+    //TODO compute line count
+    //find bigger header name
+    $line_count = 1;
+    for($i=0;$i<count($text_size_array);$i+=1)
+    {
+        $tmp = (int)(strlen($header[$i]) / $text_size_array[$i]);
+        if( (strlen($header[$i]) % $text_size_array[$i]) > 0)
+        {
+            $tmp += 1;
+        }
+        if($tmp > $line_count)
+        {
+            $line_count = $tmp;
+        }
+    }
+    
+    //build line
+    for($j=0;$j < $line_count;$j+=1)
+    {
+        for($i=0;$i<count($header);$i++)
+        {
+            $border = "LR";
+            //first line has upper border
+            if($j == 0){$border .= "T";}
+        
+            //last line has lower border
+            if($j == ($line_count-1)){$border .= "B";}
+
+            $pdf->Cell($w[$i],7,substr($header[$i],$offset_array[$i], $text_size_array[$i]),$border,0,'C',true);
+            $offset_array[$i] += ($text_size_array[$i]);
+        }
+        $pdf->Ln();
+    }
+    //$pdf->Ln();
+    
     // Restauration des couleurs et de la police
     $pdf->SetFillColor(224,235,255);
     $pdf->SetTextColor(0);
@@ -181,32 +235,77 @@ function FancyTable($pdf,$header, $data)
     // Données
     $fill = false;
     $counter = 0;
-    foreach($data as $row)
+    //foreach($data as $row)
+    for($k = 0 ; $k < count($data) ;$k+=1)
     {
-        $pdf->Cell($w[0],6,$row[0],'LR',0,'L',$fill);
-        $pdf->Cell($w[1],6,$row[1],'LR',0,'L',$fill);
-        $pdf->Cell($w[2],6,$row[2],'LR',0,'L',$fill);
-        $pdf->Cell($w[3],6,$row[3],'LR',0,'L',$fill);
-        $pdf->Cell($w[4],6,$row[4],'LR',0,'L',$fill);
-        $pdf->Cell($w[5],6,$row[5],'LR',0,'L',$fill);
-        $pdf->Cell($w[6],6,$row[6],'LR',0,'L',$fill);
-        $pdf->Cell($w[7],6,$row[7],'LR',0,'L',$fill);
+        $border = 'LR';
+        if($counter == 24)
+        {
+            $border .= "B";
+        }
+        
+        if($k == (count($data)-1))
+        {
+            $pdf->SetFillColor(255,0,0);
+            $pdf->SetTextColor(255);
+            $pdf->SetFont('Arial','',10);
+            $fill = true;
+        }
+        
+        $pdf->Cell($w[0],6,$data[$k][0],$border,0,'L',$fill);
+        $pdf->Cell($w[1],6,$data[$k][1],$border,0,'L',$fill);
+        $pdf->Cell($w[2],6,$data[$k][2],$border,0,'L',$fill);
+        $pdf->Cell($w[3],6,$data[$k][3],$border,0,'L',$fill);
+        $pdf->Cell($w[4],6,$data[$k][4],$border,0,'L',$fill);
+        $pdf->Cell($w[5],6,$data[$k][5],$border,0,'L',$fill);
+        $pdf->Cell($w[6],6,$data[$k][6],$border,0,'L',$fill);
+        $pdf->Cell($w[7],6,$data[$k][7],$border,0,'L',$fill);
         
         $pdf->Ln();
         $fill = !$fill;
         
-        $counter += 1;
-        if($counter == 20)
+        if($counter == 24)
         {
             $pdf->AddPage("L");
-            $counter = 0;
+            $counter = -1;
+            
+            if($i < (count($data) -1))
+            {
+                //$pdf->SetDrawColor(128,0,0);
+                $pdf->SetFillColor(255,0,0);
+                $pdf->SetTextColor(255);
+                $pdf->SetFont('Arial','B',7);
+                $offset_array    = array( 0,  0,  0,  0,  0,  0,  0,  0);
+                for($j=0;$j < $line_count;$j+=1)
+                {
+                    for($i=0;$i<count($header);$i++)
+                    {
+                        $border = "LR";
+                        //first line has upper border
+                        if($j == 0){$border .= "T";}
+
+                        //last line has lower border
+                        if($j == ($line_count-1)){$border .= "B";}
+
+                        $pdf->Cell($w[$i],7,substr($header[$i],$offset_array[$i], $text_size_array[$i]),$border,0,'C',true);
+                        $offset_array[$i] += ($text_size_array[$i]);
+                    }
+                    $pdf->Ln();
+                }
+                
+                $pdf->SetFillColor(224,235,255);
+                $pdf->SetTextColor(0);
+                $pdf->SetFont('','',10);
+            }
+        
         }
+        $counter += 1;
     }
     // Trait de terminaison
     $pdf->Cell(array_sum($w),0,'','T');
 }
 
-function printVolunteerList($list, $title)
+function printVolunteerList($list, $title,$gsm = true)
 {
     $pdf = new FPDF();
     $pdf->AddPage();
@@ -223,8 +322,13 @@ function printVolunteerList($list, $title)
     foreach($list as $k=>$v) //Name, Family_name,GSM  
     {
         //$pdf->MultiCell(0,10,." : ".$v["GSM"]);
-        $pdf->Cell(120,7,$v["Family_name"]." ".$v["Name"],1,0,'L',$fill);//,'LR',0,'L',$fill);
-        $pdf->Cell(50,7,$v["GSM"],1,0,'L',$fill);
+        $pdf->Cell(90,7,html_entity_decode($v["Family_name"]." ".$v["Name"],ENT_COMPAT | ENT_HTML401,"cp1252"),1,0,'L',$fill);//,'LR',0,'L',$fill);
+        
+        if($gsm)
+            $pdf->Cell(80,7,$v["GSM"],1,0,'L',$fill);
+        else
+            $pdf->Cell(90,7,$v["Mail"],1,0,'L',$fill);
+            
         $pdf->Ln();
         $fill =  !$fill;
     }
@@ -342,7 +446,8 @@ function getValidatedUserList($dbh)
 {
     $sql_req = "SELECT ID_Users, Name, Family_name, user_type, Reliability 
                 FROM Users 
-                WHERE user_type = 'validated'";
+                WHERE user_type = 'validated'
+                ORDER BY Family_name";
                 
     $stmt = $dbh->prepare($sql_req);                                               
     $stmt->execute();
@@ -387,6 +492,20 @@ function getVolunteerList($dbh,$only_backup=false)
         return $stmt->fetchAll();
 }
 
+function getVolunteerWithoutSlotList($dbh)
+{
+        $sql_req = "SELECT *
+                    FROM Users 
+                    WHERE `ID_Users` NOT IN (SELECT `ID_Users` FROM User_Timeslot) 
+                         AND user_type = \"validated\"";
+        
+        $sql_req .= " ORDER BY Family_name";    
+        $stmt = $dbh->prepare($sql_req);                                               
+        $stmt->execute();
+        
+        return $stmt->fetchAll();
+}
+
 function getVolunteerListFromActivityName($dbh,$name)
 {
     $sql_req = "SELECT Users.Name, Users.Family_name, Users.GSM  
@@ -423,7 +542,7 @@ function getUserName($dbh, $userID)
     
     if( ($var = $stmt->fetch()))
     {
-        return $var["Name"]." ".$var["Family_name"];
+        return $var["Family_name"]." ".$var["Name"];
     }
     
     return "UNKNOWN USER";
@@ -436,7 +555,7 @@ function convertBonusList($list)
     $to_ret = array();
     foreach($list as $key=>$value)
     {
-        $to_ret [] = $value["sum"]." fois : ".html_entity_decode($value["Description"]);
+        $to_ret [] = $value["sum"]." fois : ".html_entity_decode($value["Description"],ENT_COMPAT | ENT_HTML401,"cp1252");
     }
     return $to_ret;
 }
@@ -464,7 +583,7 @@ function buildVolunteerDocument($dbh,$userIDList, $bonus = true, $schedule = tru
             
             foreach($user_schedule as $k=>$v)
             {
-                $a [] = getSlotStartDateFromDBSlot($v)." : ".getSlotDescriptionFromDBSlot($v);
+                $a [] = getSlotStartDateFromDBSlot($v)." : ".html_entity_decode(getSlotDescriptionFromDBSlot($v),ENT_COMPAT | ENT_HTML401,"cp1252");
             }
 
             $a [] = "";
@@ -488,8 +607,7 @@ function buildVolunteerDocument($dbh,$userIDList, $bonus = true, $schedule = tru
 
             $page["BONUS"] = $a;
         }
-        
-        $page_array [$user_name] = $page;
+        $page_array [html_entity_decode($user_name,ENT_COMPAT | ENT_HTML401,"cp1252")] = $page;
     }
     buildSeveralPagePDF_v2($page_array);
     //buildSeveralPagePDF($page_array);
@@ -691,7 +809,7 @@ try
                     {
                         if($vi == "Nom")
                         {
-                            $user_data [] = $v["Name"]." ".$v["Family_name"];
+                            $user_data [] = html_entity_decode($v["Name"]." ".$v["Family_name"],ENT_COMPAT | ENT_HTML401,"cp1252");
                         }
                         else
                         {
@@ -719,8 +837,10 @@ try
                 $totaux_final = array();
                 $totaux_final [] = "TOTAL";
                 
+                $header_finals = array();
                 foreach($header_name as $ki=>$vi)
                 {
+                    $header_finals [] = html_entity_decode($vi,ENT_COMPAT | ENT_HTML401,"cp1252");
                     if($vi == "Nom"){continue;}
                     $totaux_final [] = $totaux[$vi];
                 }
@@ -729,7 +849,7 @@ try
                 
                 $pdf = new FPDF();
                 $pdf->AddPage("L");
-                FancyTable($pdf, $header_name,$data);
+                FancyTable($pdf, $header_finals,$data);
                 $pdf->Output();
                 exit();
             }
@@ -748,6 +868,11 @@ try
             {
                 $list = getVolunteerList($dbh,false);
                 printVolunteerList($list,"BENEVOLES");
+            }
+            else if($_GET["doc"] == "volunteer_without_slot")
+            {
+                $list = getVolunteerWithoutSlotList($dbh);
+                printVolunteerList($list,"BENEVOLES SANS SLOT HORAIRE",false);
             }
             else
             {
@@ -811,7 +936,7 @@ try
             }
             
             $list = getVolunteerListFromActivityName($dbh,$_POST["activity_name"]);
-            printVolunteerList($list,"BENEVOLE POUR ".$_POST["activity_name"]);
+            printVolunteerList($list,"BENEVOLE POUR ".html_entity_decode($_POST["activity_name"],ENT_COMPAT | ENT_HTML401,"cp1252"));
         }
         else
         {
@@ -826,6 +951,8 @@ try
             
             echo "Nombre d'utilisateur inscrit : ".getAllUserExceptAdmin($dbh)."<BR />";
             echo "Nombre d'utilisateur valid&eacute;s : ".count($user_list)."<BR />"; 
+            echo "Nombre d'utilisateur valid&eacute;s sans aucune plage : ".getValidatedUserWithoutSlotCount($dbh)."<BR />"; 
+            
             echo "Nombre d'utilisateur non valid&eacute;s : ".getNonValidatedUserCount($dbh)."<BR />"; 
             echo "Nombre de plages horaires TOTALE : ".$total_slot_count."<BR />";
             echo "Nombre de plages horaires RESERVEES : ".$recorded_slot_count."<BR />";
@@ -846,7 +973,9 @@ try
 			//-liste benevole de secour (nom + num de gsm)
 			echo"<a href=\"listing.php?doc=backupvolunteer\" target=\"_blank\">Obtenir la liste de tous les utilisateur de secours</a><BR />";
 			//-liste benevole normaux (nom + num de gsm)
-			echo"<a href=\"listing.php?doc=volunteer\" target=\"_blank\">Obtenir la liste de tous les utilisateur normaux</a><BR /><BR />";
+			echo"<a href=\"listing.php?doc=volunteer\" target=\"_blank\">Obtenir la liste de tous les utilisateur normaux</a><BR />";
+			//-liste benevoles validées sans aucune plage (nom + num de gsm)
+			echo"<a href=\"listing.php?doc=volunteer_without_slot\" target=\"_blank\">Obtenir la liste de tous les utilisateur valid&eacute;s sans aucune plage</a><BR /><BR />";
 			
             //-planning d'un utilisateur / -bonus d'un utilisateur / -bonus/planning d'un utilisateur
             echo "<form METHOD=\"POST\" ACTION=\"listing.php\" TARGET=\"_blank\"><select name=\"volunteer_id\">";
@@ -862,7 +991,7 @@ try
             
             foreach($activity_list as $k=>$v)
             {
-                echo "<OPTION value=\"".$v["Description"]."\">".$v["Description"]."</OPTION>";
+                echo "<OPTION value=\"".htmlspecialchars($v["Description"])."\">".$v["Description"]."</OPTION>";
             }
             echo "</select><INPUT type=\"submit\" name=\"getactschedule\" value=\"Obtenir le planning de l'activit&eacute;\">
             <INPUT type=\"submit\" name=\"getvolunteer\" value=\"Obtenir la liste des b&eacute;n&eacute;voles de cette activit&eacute;\"></form>";
@@ -880,6 +1009,5 @@ catch(PDOException $err)
 
     echo "<BR/>Il semblerait qu'un probleme avec la base de donn&eacute;es ait eu lieu.  Si le probl&egrave;me persiste, contactez l'administrateur du site: webmaster@folkfestivalmarsinne.be";
 }   
-
 $dbh = null;
 ?>
